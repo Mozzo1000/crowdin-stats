@@ -30,3 +30,7 @@ go run ./cmd/crowdin-stats
 
 See `docker-compose.yml`, `Dockerfile`, and `Caddyfile`. Copy `.env.example`
 to `.env`, fill in `MASTER_KEY` and `HOST`, then `docker compose up -d --build`.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

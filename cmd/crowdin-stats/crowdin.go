@@ -83,6 +83,31 @@ func ValidateProject(ctx context.Context, token, projectID string) error {
 	return nil
 }
 
+// fetchProjectOwnerID returns the Crowdin user ID of the project's owner,
+// used to filter them out of the contributors grid when hideOwner is set —
+// the owner shows up in the top-members report like any other translator,
+// but isn't a "contributor" in the sense the badge is meant to celebrate.
+func fetchProjectOwnerID(ctx context.Context, token, projectID string) (int64, error) {
+	id, err := strconv.Atoi(projectID)
+	if err != nil {
+		return 0, errors.New("project ID must be numeric")
+	}
+
+	client, err := crowdinClientFor(token)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := outboundLimiter.Wait(ctx); err != nil {
+		return 0, err
+	}
+	project, _, err := client.Projects.Get(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("fetch project owner: %s", friendlyAPIError(err))
+	}
+	return int64(project.UserID), nil
+}
+
 // FetchLanguageProgress retrieves per-language translation progress for a project.
 func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]LanguageProgress, error) {
 	id, err := strconv.Atoi(projectID)
@@ -180,7 +205,8 @@ func (u ReportUnit) toCrowdinUnit() model.ReportUnit {
 
 // FetchTopMembers runs the async generate -> poll -> download flow for the
 // "top-members" report and returns contributors ranked by the given unit.
-func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUnit) ([]Contributor, error) {
+// When hideOwner is set, the project owner is excluded from the result.
+func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUnit, hideOwner bool) ([]Contributor, error) {
 	id, err := strconv.Atoi(projectID)
 	if err != nil {
 		return nil, errors.New("project ID must be numeric")
@@ -189,6 +215,19 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	client, err := crowdinClientFor(token)
 	if err != nil {
 		return nil, err
+	}
+
+	// Kicked off in parallel with report generation/polling below, so
+	// hideOwner doesn't add its own round trip to the badge's latency.
+	var ownerID int64
+	var ownerErr error
+	var ownerDone chan struct{}
+	if hideOwner {
+		ownerDone = make(chan struct{})
+		go func() {
+			defer close(ownerDone)
+			ownerID, ownerErr = fetchProjectOwnerID(ctx, token, projectID)
+		}()
 	}
 
 	if err := outboundLimiter.Wait(ctx); err != nil {
@@ -255,9 +294,19 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		return nil, fmt.Errorf("parse report: %w", err)
 	}
 
+	if hideOwner {
+		<-ownerDone
+		if ownerErr != nil {
+			return nil, ownerErr
+		}
+	}
+
 	out := make([]Contributor, 0, len(report.Data))
 	for _, row := range report.Data {
 		if row.User.Username == "REMOVED_USER" {
+			continue
+		}
+		if hideOwner && int64(row.User.ID) == ownerID {
 			continue
 		}
 		out = append(out, Contributor{

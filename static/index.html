@@ -96,10 +96,15 @@
     <!-- Customization -->
     <section class="py-16 border-t border-border">
       <h2 class="text-xl font-semibold mb-4">Customize the contributor grid</h2>
-      <p class="text-text-muted mb-6">Both parameters are just query string values on the URL — no re-onboarding required to change them.</p>
+      <p class="text-text-muted mb-6">These are all just query string values on the URL — no re-onboarding required to change them.</p>
       <div class="panel p-4 font-mono text-xs text-accent-mint break-all">
-        /embed/&#123;public_id&#125;/contributors.svg?limit=10&amp;unit=words
+        /embed/&#123;public_id&#125;/contributors.svg?limit=10&amp;unit=words&amp;hideOwner=true
       </div>
+      <ul class="mt-4 text-text-muted text-sm space-y-1.5">
+        <li><code class="font-mono text-accent-mint">limit</code> — how many contributors to show, 1–100 (default 30)</li>
+        <li><code class="font-mono text-accent-mint">unit</code> — rank by <code class="font-mono">words</code>, <code class="font-mono">strings</code>, or <code class="font-mono">characters</code> (default words)</li>
+        <li><code class="font-mono text-accent-mint">hideOwner</code> — set to <code class="font-mono">true</code> to exclude the project owner from the grid (default false)</li>
+      </ul>
       <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="panel p-4">
           <p class="text-text-muted text-xs font-mono mb-2">limit=10</p>

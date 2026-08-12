@@ -241,8 +241,10 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 		unit = UnitWords
 	}
 
-	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit)
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit))
+	hideOwner := r.URL.Query().Get("hideOwner") == "true"
+
+	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner))
 	if err != nil {
 		s.handleBadgeError(w, err)
 		return
@@ -277,13 +279,13 @@ func (s *server) renderTable(p project) fetchFunc {
 	}
 }
 
-func (s *server) renderContributors(p project, limit int, unit ReportUnit) fetchFunc {
+func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
 			return "", err
 		}
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit)
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner)
 		if err != nil {
 			return "", err
 		}

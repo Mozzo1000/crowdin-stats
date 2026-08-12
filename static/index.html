@@ -172,7 +172,7 @@
     <script>
       CrowdinStatsBadgeBuilder.init(document.querySelector('.badge-builder'), {
         mode: 'demo',
-        baseEmbedURL: '/embed/{public_id}',
+        baseEmbedURL: window.location.origin + '/embed/{public_id}',
       });
     </script>
 

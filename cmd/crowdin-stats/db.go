@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	_ "modernc.org/sqlite"
 )
@@ -12,6 +14,12 @@ import (
 var schemaSQL string
 
 func openDB(path string) (*sql.DB, error) {
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, fmt.Errorf("create db directory: %w", err)
+		}
+	}
+
 	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)

@@ -1,6 +1,6 @@
 # crowdin-stats
 
-Self-hosted service generating live, embeddable SVG badges (translation
+Self-hosted service generating live, embeddable SVG images (translation
 progress table + contributor grid) for Crowdin projects, for use in GitHub
 READMEs. See `PLAN.md` for the full design and `SECURITY.md` for the
 encryption/token-handling guarantees.
@@ -25,7 +25,7 @@ export MASTER_KEY=$(openssl rand -base64 32)
 export DB_PATH=./data/db.sqlite
 go run ./cmd/crowdin-stats
 
-# add -no-cache to bypass the 12h badge cache entirely — every badge
+# add -no-cache to bypass the 12h embed cache entirely — every embed
 # request does a live Crowdin fetch, useful while testing
 go run ./cmd/crowdin-stats -no-cache
 ```

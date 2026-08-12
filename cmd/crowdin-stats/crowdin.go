@@ -16,7 +16,7 @@ import (
 )
 
 // outboundLimiter bounds aggregate outbound calls to Crowdin's API across all
-// projects, independent of the per-project rate limits enforced on badge
+// projects, independent of the per-project rate limits enforced on embed
 // routes (see ratelimit.go). This protects against many projects' caches
 // expiring around the same time and hammering Crowdin at once.
 var outboundLimiter = rate.NewLimiter(rate.Limit(5), 10)
@@ -86,7 +86,7 @@ func ValidateProject(ctx context.Context, token, projectID string) error {
 // fetchProjectOwnerID returns the Crowdin user ID of the project's owner,
 // used to filter them out of the contributors grid when hideOwner is set —
 // the owner shows up in the top-members report like any other translator,
-// but isn't a "contributor" in the sense the badge is meant to celebrate.
+// but isn't a "contributor" in the sense the embed is meant to celebrate.
 func fetchProjectOwnerID(ctx context.Context, token, projectID string) (int64, error) {
 	id, err := strconv.Atoi(projectID)
 	if err != nil {
@@ -218,7 +218,7 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	}
 
 	// Kicked off in parallel with report generation/polling below, so
-	// hideOwner doesn't add its own round trip to the badge's latency.
+	// hideOwner doesn't add its own round trip to the embed's latency.
 	var ownerID int64
 	var ownerErr error
 	var ownerDone chan struct{}

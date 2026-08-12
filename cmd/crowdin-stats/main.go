@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	noCache := flag.Bool("no-cache", false, "disable the 12h badge cache — every badge request does a live Crowdin fetch (for testing)")
+	noCache := flag.Bool("no-cache", false, "disable the 12h embed cache — every embed request does a live Crowdin fetch (for testing)")
 	flag.Parse()
 
 	masterKey, err := loadMasterKey()
@@ -54,7 +54,7 @@ func main() {
 
 	s := &server{db: db, masterKey: masterKey, noCache: *noCache}
 	if s.noCache {
-		slog.Warn("caching disabled — every badge request will hit Crowdin live (-no-cache)")
+		slog.Warn("caching disabled — every embed request will hit Crowdin live (-no-cache)")
 	}
 
 	mux := http.NewServeMux()
@@ -63,8 +63,8 @@ func main() {
 	mux.HandleFunc("GET /terms", serveStaticFile("static/terms.html"))
 	mux.HandleFunc("GET /privacy", serveStaticFile("static/privacy.html"))
 	mux.HandleFunc("POST /setup", s.handleSetup)
-	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableBadge)
-	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsBadge)
+	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableEmbed)
+	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsEmbed)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -210,20 +210,20 @@ func trimToDigits(s string) string {
 	return string(out)
 }
 
-// parseBadgeColors reads the shared bg/text/muted/accent/border query
-// params, falling back to defaultBadgeColors per-field for anything
+// parseEmbedColors reads the shared bg/text/muted/accent/border query
+// params, falling back to defaultEmbedColors per-field for anything
 // missing or not a valid 3- or 6-digit hex color.
-func parseBadgeColors(q url.Values) badgeColors {
-	return badgeColors{
-		bg:     sanitizeHexColor(q.Get("bg"), defaultBadgeColors.bg),
-		text:   sanitizeHexColor(q.Get("text"), defaultBadgeColors.text),
-		muted:  sanitizeHexColor(q.Get("muted"), defaultBadgeColors.muted),
-		accent: sanitizeHexColor(q.Get("accent"), defaultBadgeColors.accent),
-		border: sanitizeHexColor(q.Get("border"), defaultBadgeColors.border),
+func parseEmbedColors(q url.Values) embedColors {
+	return embedColors{
+		bg:     sanitizeHexColor(q.Get("bg"), defaultEmbedColors.bg),
+		text:   sanitizeHexColor(q.Get("text"), defaultEmbedColors.text),
+		muted:  sanitizeHexColor(q.Get("muted"), defaultEmbedColors.muted),
+		accent: sanitizeHexColor(q.Get("accent"), defaultEmbedColors.accent),
+		border: sanitizeHexColor(q.Get("border"), defaultEmbedColors.border),
 	}
 }
 
-func (s *server) handleTableBadge(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
 	p, err := getProject(s.db, publicID)
 	if err != nil {
@@ -231,18 +231,18 @@ func (s *server) handleTableBadge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	colors := parseBadgeColors(r.URL.Query())
+	colors := parseEmbedColors(r.URL.Query())
 
 	cacheKey := "table:" + publicID + ":" + colors.cacheKeyFragment()
 	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderTable(p, colors), s.noCache)
 	if err != nil {
-		s.handleBadgeError(w, err, colors)
+		s.handleEmbedError(w, err, colors)
 		return
 	}
 	writeSVG(w, svg)
 }
 
-func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
 	p, err := getProject(s.db, publicID)
 	if err != nil {
@@ -271,31 +271,31 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 	}
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
-	colors := parseBadgeColors(r.URL.Query())
+	colors := parseEmbedColors(r.URL.Query())
 
 	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner) + ":" + colors.cacheKeyFragment()
 	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner, colors), s.noCache)
 	if err != nil {
-		s.handleBadgeError(w, err, colors)
+		s.handleEmbedError(w, err, colors)
 		return
 	}
 	writeSVG(w, svg)
 }
 
-// handleBadgeError always responds with a valid SVG image rather than a
+// handleEmbedError always responds with a valid SVG image rather than a
 // plain-text error body: these routes are consumed as <img src> in READMEs,
 // and a non-image response renders as a broken image icon with no
 // explanation. The real error is still logged server-side.
-func (s *server) handleBadgeError(w http.ResponseWriter, err error, colors badgeColors) {
+func (s *server) handleEmbedError(w http.ResponseWriter, err error, colors embedColors) {
 	if errors.Is(err, errRateLimited) {
 		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly", colors))
 		return
 	}
-	slog.Warn("badge render failed", "error", err)
+	slog.Warn("embed render failed", "error", err)
 	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
 }
 
-func (s *server) renderTable(p project, colors badgeColors) fetchFunc {
+func (s *server) renderTable(p project, colors embedColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -309,7 +309,7 @@ func (s *server) renderTable(p project, colors badgeColors) fetchFunc {
 	}
 }
 
-func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool, colors badgeColors) fetchFunc {
+func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool, colors embedColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {

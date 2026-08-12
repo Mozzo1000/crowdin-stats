@@ -17,7 +17,7 @@ Design priorities, in order:
 3. **Simple to run**: single Go binary, SQLite, docker-compose, self-hosted on
    an EU VM — no cloud KMS, no Redis, no external dependencies beyond Crowdin's
    API itself
-4. **Long cache (12h)** with stale-while-revalidate, so badge requests are fast
+4. **Long cache (12h)** with stale-while-revalidate, so embed requests are fast
    and Crowdin API usage stays low
 
 ---
@@ -34,8 +34,8 @@ Design priorities, in order:
                          │  ┌────────────────────────┐  │
                          │  │ GET  /setup (HTML page) │  │
                          │  │ POST /setup (onboard)   │  │
-                         │  │ GET  /badge/:id/table   │  │
-                         │  │ GET  /badge/:id/contrib │  │
+                         │  │ GET  /embed/:id/table   │  │
+                         │  │ GET  /embed/:id/contrib │  │
                          │  └────────────────────────┘  │
                          │  in-memory/SQLite rate limiter│
                          │  background refresh goroutines│
@@ -84,7 +84,7 @@ on a mounted volume. No Redis, no KMS, no message queue.
 PRAGMA journal_mode = WAL;
 
 CREATE TABLE projects (
-    public_id           TEXT PRIMARY KEY,      -- random UUIDv4, used in badge URLs
+    public_id           TEXT PRIMARY KEY,      -- random UUIDv4, used in embed URLs
     crowdin_project_id  TEXT NOT NULL,          -- plaintext; not a credential, see §5
     ciphertext           BLOB NOT NULL,          -- NaCl secretbox output
     nonce                 BLOB NOT NULL,          -- 24 bytes, unique per encryption
@@ -109,7 +109,7 @@ CREATE TABLE rate_limits (
 
 Notes:
 - No user/account table, no login. `public_id` unguessability is the access
-  control for badge URLs.
+  control for embed URLs.
 - `revoked` flag lets a project be disabled without deleting the row
   (audit trail preserved until a user explicitly requests deletion by email).
 - Cache `key` must encode all query parameters that affect rendering
@@ -190,7 +190,7 @@ func decryptToken(key [32]byte, ciphertext, nonce []byte) (string, error) {
 > unencrypted to make API calls, and it is not itself a credential — knowing
 > a project ID grants no access without a valid token. However, if your
 > Crowdin project is private, be aware that our database holds an
-> unencrypted association between your badge's `public_id` and your private
+> unencrypted association between your embed's `public_id` and your private
 > project's identity. Public projects have no such exposure, since their IDs
 > are already visible in Crowdin's own public URLs.
 
@@ -304,18 +304,18 @@ Onboarding endpoint.
    reject with a clear error if invalid/wrong scope before storing anything.
 4. Encrypt the token (§5); drop the plaintext reference immediately after.
 5. Generate a `public_id` (UUIDv4), insert into `projects`.
-6. Return badge URLs and ready-to-paste markdown.
+6. Return embed URLs and ready-to-paste markdown.
 
 **Response:**
 ```json
 {
-  "table_url": "https://badges.example.eu/badge/{public_id}/table.svg",
-  "contributors_url": "https://badges.example.eu/badge/{public_id}/contributors.svg?limit=30&unit=words",
+  "table_url": "https://embeds.example.eu/embed/{public_id}/table.svg",
+  "contributors_url": "https://embeds.example.eu/embed/{public_id}/contributors.svg?limit=30&unit=words",
   "markdown": "![Translation Progress](...)\n![Contributors](...)"
 }
 ```
 
-### `GET /badge/{public_id}/table.svg`
+### `GET /embed/{public_id}/table.svg`
 Renders the progress table. No query parameters.
 
 - Cache key: `table:{public_id}`
@@ -326,7 +326,7 @@ Renders the progress table. No query parameters.
 - Cache miss (first-ever request) → rate-limit check, then block on a live
   fetch + render + cache write.
 
-### `GET /badge/{public_id}/contributors.svg?limit=30&unit=words`
+### `GET /embed/{public_id}/contributors.svg?limit=30&unit=words`
 Renders the contributor grid.
 
 **Query parameters:**
@@ -361,9 +361,9 @@ Two independent limiter scopes, since the abuse shapes differ:
 | Target                          | Threat                                                        | Limit                          |
 |-----------------------------------|-------------------------------------------------------------------|-------------------------------------|
 | `POST /setup`                       | Spam registrations / brute-forcing project IDs against stolen tokens | Per-IP: 5/hour                        |
-| Cache-miss path on badge routes       | Forcing repeated live Crowdin calls, exhausting API quota            | Per-`public_id`: 20 refreshes/hour     |
+| Cache-miss path on embed routes       | Forcing repeated live Crowdin calls, exhausting API quota            | Per-`public_id`: 20 refreshes/hour     |
 
-**Only the cache-miss / refresh path is rate-limited on badge routes** — normal
+**Only the cache-miss / refresh path is rate-limited on embed routes** — normal
 cache-hit traffic (the overwhelming majority of real README views) is never
 throttled.
 
@@ -453,7 +453,7 @@ on top of a dev tool.
 **Typography**
 - **Inter** — headings and body copy. Quiet, legible, no display-serif
   moment; this isn't a lifestyle brand.
-- **JetBrains Mono** — anything data-shaped: badge URLs, the Project ID/Token
+- **JetBrains Mono** — anything data-shaped: embed URLs, the Project ID/Token
   input fields, code blocks, the markdown output snippet. Using monospace
   specifically for these fields (not just code blocks) reinforces "this is a
   technical credential field," subtly cueing the user to treat it carefully.
@@ -495,7 +495,7 @@ Single-column, generous vertical rhythm, sections in this order:
      realistic placeholder data (a handful of languages at varied
      percentages, a grid of placeholder avatar circles) and reference them
      directly with plain `<img>` tags.
-   - Primary CTA button (amber): "Set up your badges" → `/setup`
+   - Primary CTA button (amber): "Set up your embeds" → `/setup`
    - Secondary link: "View on GitHub"
 
 2. **How it works** (numbered — genuinely sequential here, so numbering is
@@ -514,7 +514,7 @@ Single-column, generous vertical rhythm, sections in this order:
      source code" → link to the GitHub repo
    - This section should look distinct from marketing copy — e.g. a
      bordered panel styled like a terminal/code block, reinforcing
-     "this is a technical claim you can verify," not a trust badge/seal
+     "this is a technical claim you can verify," not a trust embed/seal
      graphic
 
 4. **Customization example**
@@ -533,7 +533,7 @@ Single-column, generous vertical rhythm, sections in this order:
      Delete the Personal Access Token in your Crowdin account — this is the
      real kill switch and takes effect immediately, before the service's
      cache even expires. To also remove your project's row from our
-     database, email `revoke@yourdomain.eu` with your badge URL (the
+     database, email `revoke@yourdomain.eu` with your embed URL (the
      `public_id` in the image URL is enough to identify it). We manually
      confirm and delete within [X days] — no automated self-service delete
      exists in v1, and this page says so plainly rather than implying one
@@ -549,7 +549,7 @@ Single-column, generous vertical rhythm, sections in this order:
      but nothing on Crowdin's side enforces it if a user pastes a
      broader-scoped token instead.
    - **"What happens if I delete my Crowdin token but forget to email you?"**
-     The badge endpoints will start failing (Crowdin returns 401) on the
+     The embed endpoints will start failing (Crowdin returns 401) on the
      next cache refresh; the last successfully cached SVG keeps being served
      stale until it errors out, at which point the image simply stops
      updating/loading. The row stays in the database, encrypted and
@@ -596,7 +596,7 @@ not a jarring handoff to a different-looking "app."
    - Personal Access Token (password-masked, monospace, with a show/hide
      toggle icon — a masked technical credential is hard to proofread, and
      letting the user verify what they pasted reduces failed submissions)
-3. Primary button: "Generate badges" (amber, disabled state while
+3. Primary button: "Generate embeds" (amber, disabled state while
    submitting, label changes to "Verifying...")
 4. Submit → `POST /setup` via `fetch`.
 5. **On success**: form is replaced (not appended below) by a results panel:
@@ -615,7 +615,7 @@ not a jarring handoff to a different-looking "app."
 > To revoke access, delete the Personal Access Token in your Crowdin account
 > — this immediately stops the service from accessing your project. To also
 > remove your data from our database, email `revoke@yourdomain.eu` with your
-> badge URL.
+> embed URL.
 
 **Security headers for `/setup` specifically (via Caddy):**
 ```
@@ -641,7 +641,7 @@ injection on the one page that handles a secret.
 - Both `/` and `/setup` are plain, static `http.ServeFile` handlers — no
   templating engine needed. The landing page has no server-side data
   dependency at all, since its example imagery is the hardcoded demo SVGs
-  described in §9.2, not a live-rendered call to the badge endpoints.
+  described in §9.2, not a live-rendered call to the embed endpoints.
 - Demo SVGs can reuse the same `renderSVGTable` / `renderContributorsSVG`
   functions from §11 at build time (a small one-off script or `go run` step
   that writes fixed sample data to `static/demo-table.svg` and
@@ -658,7 +658,7 @@ injection on the one page that handles a secret.
 - **Primary kill switch**: the user deletes their Crowdin PAT themselves. This
   immediately breaks the service's ability to call Crowdin on their behalf —
   no action required on the operator's side for access to stop.
-- **Secondary/cleanup**: user emails `revoke@yourdomain.eu` with their badge
+- **Secondary/cleanup**: user emails `revoke@yourdomain.eu` with their embed
   URL to request the database row be purged.
 - **Manual action on receipt of a revoke email:**
   ```sql
@@ -667,7 +667,7 @@ injection on the one page that handles a secret.
   DELETE FROM projects WHERE public_id = 'xxxx';
   DELETE FROM cache WHERE key LIKE 'table:xxxx%' OR key LIKE 'contrib:xxxx%';
   ```
-- Both badge handlers must check `revoked = 0` in their project lookup query,
+- Both embed handlers must check `revoked = 0` in their project lookup query,
   so a revoked project 404s immediately rather than serving stale cache.
 
 ---
@@ -729,7 +729,7 @@ services:
     environment:
       - MASTER_KEY=${MASTER_KEY}
       - DB_PATH=/data/db.sqlite
-      - HOST=badges.yourdomain.eu
+      - HOST=embeds.yourdomain.eu
     volumes:
       - ./data:/data
     restart: unless-stopped
@@ -752,7 +752,7 @@ volumes:
 
 ```
 # Caddyfile
-badges.yourdomain.eu {
+embeds.yourdomain.eu {
     header /setup {
         Referrer-Policy "no-referrer"
         Content-Security-Policy "default-src 'self'"
@@ -783,7 +783,7 @@ with no C toolchain dependency, for reproducible builds.
 # .env.example — copy to .env, generate a real key, chmod 600, never commit
 MASTER_KEY=                    # generate with: openssl rand -base64 32
 DB_PATH=/data/db.sqlite
-HOST=badges.yourdomain.eu
+HOST=embeds.yourdomain.eu
 ```
 
 ---
@@ -793,7 +793,7 @@ HOST=badges.yourdomain.eu
 1. `openssl rand -base64 32` → `.env` as `MASTER_KEY`; `chmod 600 .env`;
    confirm gitignored.
 2. `docker compose up -d --build`.
-3. Point DNS for `badges.yourdomain.eu` at the VM; Caddy handles TLS
+3. Point DNS for `embeds.yourdomain.eu` at the VM; Caddy handles TLS
    automatically.
 4. End-to-end test `/setup` with a real project-scoped Crowdin token.
 5. Manually inspect `db.sqlite` to confirm only ciphertext is present
@@ -863,7 +863,7 @@ Minimum viable logging (structured, e.g. `log/slog`):
   response bodies, and `/setup` excluded from any middleware that might
   capture them by default.
 - Crowdin API call outcomes (success/failure/latency) — useful for noticing
-  if Crowdin itself is degraded before users report broken badges.
+  if Crowdin itself is degraded before users report broken embeds.
 - Rate-limit rejections — a spike here is usually the first sign of abuse.
 
 Minimum viable monitoring: disk usage alert on the VM (SQLite file +
@@ -899,7 +899,7 @@ chosen to trust by using Crowdin.
   `<image href>`, left for the viewer's browser to resolve client-side.
   Real-world testing showed this doesn't actually work: browsers refuse to
   load an external `<image href>` inside an SVG when that SVG is used as
-  an `<img src>` — which is exactly how every badge is displayed in a
+  an `<img src>` — which is exactly how every embed is displayed in a
   README (confirmed against Firefox bug 628747, "SVG-as-an-image
   shouldn't be able to load external resources"). Opening the raw SVG URL
   directly worked fine, which made this easy to miss in manual testing.
@@ -908,5 +908,5 @@ chosen to trust by using Crowdin.
   similar tools handle this. SSRF exposure is bounded, not eliminated:
   HTTPS-only, 5s timeout, 2MB body cap, `Content-Type` must start with
   `image/`, and any failure just falls back to the initials circle rather
-  than erroring the whole badge. The avatar URL itself comes from
+  than erroring the whole embed. The avatar URL itself comes from
   Crowdin's own report response, not directly from user input.

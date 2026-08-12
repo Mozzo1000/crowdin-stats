@@ -13,7 +13,7 @@ import (
 )
 
 // Browsers refuse to load external <image href> resources inside an SVG
-// when that SVG is used as an <img src> — the exact way badges are always
+// when that SVG is used as an <img src> — the exact way embeds are always
 // embedded in READMEs (confirmed against real-world testing; see Firefox
 // bug 628747, "SVG-as-an-image shouldn't be able to load external
 // resources"). Opening the SVG file directly works fine, which is
@@ -21,7 +21,7 @@ import (
 // each avatar as a base64 data: URI at render time, so the SVG carries its
 // own image bytes and needs no second network request to display.
 const (
-	maxAvatarEmbeds     = 100 // matches the badge route's own limit=100 cap
+	maxAvatarEmbeds     = 100 // matches the embed route's own limit=100 cap
 	maxAvatarBodyBytes  = 2 << 20
 	avatarFetchTimeout  = 5 * time.Second
 	avatarFetchParallel = 6

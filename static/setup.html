@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Set up your badges — crowdin-stats</title>
+  <title>Set up your embeds — crowdin-stats</title>
   <meta name="referrer" content="no-referrer" />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
@@ -37,9 +37,9 @@
   </header>
 
   <main class="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16">
-    <h1 class="text-2xl font-semibold">Set up your badges</h1>
+    <h1 class="text-2xl font-semibold">Set up your embeds</h1>
     <p class="mt-2 text-text-muted text-sm">
-      Takes under a minute. No account, no login — the badge URLs you get back are the only thing that identifies your project.
+      Takes under a minute. No account, no login — the embed URLs you get back are the only thing that identifies your project.
     </p>
 
     <div class="panel p-5 mt-8 text-sm text-text-muted leading-relaxed">
@@ -112,7 +112,7 @@
         </div>
       </div>
 
-      <button type="submit" id="submit-btn" class="btn-primary w-full">Generate badges</button>
+      <button type="submit" id="submit-btn" class="btn-primary w-full">Generate embeds</button>
 
       <p id="error-msg" class="hidden text-sm text-red-600 dark:text-red-400"></p>
     </form>
@@ -135,12 +135,12 @@
 
       <div>
         <h2 class="text-lg font-semibold mb-1">Want a different look?</h2>
-        <p class="text-text-muted text-sm mb-4">Build a custom version of either badge below — this preview is your real project's live data, and the URL updates as you go.</p>
+        <p class="text-text-muted text-sm mb-4">Build a custom version of either embed below — this preview is your real project's live data, and the URL updates as you go.</p>
 
-        <div class="badge-builder panel p-5">
+        <div class="embed-builder panel p-5">
           <div class="flex gap-2 mb-5">
-            <button type="button" data-badge-type="table" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Translation progress</button>
-            <button type="button" data-badge-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
+            <button type="button" data-embed-type="table" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Translation progress</button>
+            <button type="button" data-embed-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
           </div>
 
           <div data-builder-contrib-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
@@ -189,7 +189,7 @@
           </div>
 
           <div class="mb-4 overflow-x-auto">
-            <img data-builder-preview-img class="max-w-full" alt="Live badge preview with your chosen settings" />
+            <img data-builder-preview-img class="max-w-full" alt="Live embed preview with your chosen settings" />
           </div>
 
           <div class="flex items-center gap-2">
@@ -203,7 +203,7 @@
     <div class="panel p-4 mt-8 text-xs text-text-muted leading-relaxed">
       <strong class="text-text">Revocation:</strong> delete the Personal Access Token in your Crowdin account —
       this immediately stops the service from accessing your project. To also remove your data from our database,
-      email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL.
+      email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your embed URL.
     </div>
 
     <p class="mt-6 text-xs text-text-muted">
@@ -212,7 +212,7 @@
     </p>
   </main>
 
-  <script src="/static/badge-builder.js"></script>
+  <script src="/static/embed-builder.js"></script>
   <script>
     document.getElementById('theme-toggle').addEventListener('click', function () {
       var isDark = document.documentElement.classList.toggle('dark');
@@ -289,7 +289,7 @@
       document.getElementById('preview-img').src = data.table_url;
       results.classList.remove('hidden');
 
-      CrowdinStatsBadgeBuilder.init(document.querySelector('.badge-builder'), {
+      CrowdinStatsEmbedBuilder.init(document.querySelector('.embed-builder'), {
         mode: 'live',
         baseEmbedURL: data.embed_base_url,
       });
@@ -298,7 +298,7 @@
         errorMsg.textContent = message;
         errorMsg.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate badges';
+        submitBtn.textContent = 'Generate embeds';
       }
     });
 

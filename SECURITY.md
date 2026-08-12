@@ -10,7 +10,7 @@ When you register a project, we store:
 
 - Your Crowdin Project ID, **in plaintext**.
 - Your Crowdin Personal Access Token, **encrypted**.
-- A randomly generated `public_id` used in your badge URLs.
+- A randomly generated `public_id` used in your embed URLs.
 
 ## Token encryption
 
@@ -45,7 +45,7 @@ If your Crowdin project is **public**, this has no practical effect: your
 project ID is already visible in Crowdin's own public project URL.
 
 If your Crowdin project is **private**, be aware that our database holds an
-unencrypted association between your badge's `public_id` and your private
+unencrypted association between your embed's `public_id` and your private
 project's identity. If that distinction matters to you, weigh it before
 registering a private project's token with this service.
 
@@ -74,7 +74,7 @@ the service simply loses the ability to call Crowdin on your behalf on its
 next refresh.
 
 To also have your project's row removed from our database, email
-`revoke@crowdin-stats.rewake.org` with your badge URL. We process these manually; there
+`revoke@crowdin-stats.rewake.org` with your embed URL. We process these manually; there
 is no automated self-service deletion in the current version.
 
 ## Key rotation

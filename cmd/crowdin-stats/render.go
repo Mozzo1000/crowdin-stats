@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// badgeColors are the customizable colors shared by both SVG renderers.
+// embedColors are the customizable colors shared by both SVG renderers.
 // Query params use the same names as the site's own CSS tokens (bg, text,
 // text-muted, accent, border) so the customization surface reads as one
-// consistent vocabulary rather than two badge-specific ones.
-type badgeColors struct {
+// consistent vocabulary rather than two embed-specific ones.
+type embedColors struct {
 	bg     string // card background
 	text   string // primary text (language labels)
 	muted  string // secondary text (percentages, initials, empty-state message)
@@ -20,7 +20,7 @@ type badgeColors struct {
 	border string // bar track / avatar ring / fallback circle background
 }
 
-var defaultBadgeColors = badgeColors{
+var defaultEmbedColors = embedColors{
 	bg:     "#12161F",
 	text:   "#E8EAED",
 	muted:  "#8B93A3",
@@ -33,7 +33,7 @@ var hexColorRe = regexp.MustCompile(`^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$`)
 // sanitizeHexColor accepts a 3- or 6-digit hex color with or without a
 // leading '#' and returns it normalized with a leading '#'. Anything else
 // (missing, malformed, an attempt at CSS/JS injection) falls back to the
-// default rather than erroring the whole badge over a bad query param.
+// default rather than erroring the whole embed over a bad query param.
 func sanitizeHexColor(raw, fallback string) string {
 	raw = strings.TrimPrefix(raw, "#")
 	if hexColorRe.MatchString(raw) {
@@ -43,8 +43,8 @@ func sanitizeHexColor(raw, fallback string) string {
 }
 
 // cacheKeyFragment renders the colors into a stable string so different
-// color combinations don't collide in the badge cache table.
-func (c badgeColors) cacheKeyFragment() string {
+// color combinations don't collide in the embed cache table.
+func (c embedColors) cacheKeyFragment() string {
 	return "bg=" + c.bg + ":text=" + c.text + ":muted=" + c.muted + ":accent=" + c.accent + ":border=" + c.border
 }
 
@@ -61,7 +61,7 @@ const (
 )
 
 // renderTableSVG renders a horizontal progress bar per language.
-func renderTableSVG(languages []LanguageProgress, colors badgeColors) string {
+func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 	sorted := make([]LanguageProgress, len(languages))
 	copy(sorted, languages)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -109,7 +109,7 @@ const (
 
 // renderContributorsSVG renders a contrib.rocks-style grid of circular
 // avatars, ordered by contribution volume and truncated to limit.
-func renderContributorsSVG(contributors []Contributor, limit int, colors badgeColors) string {
+func renderContributorsSVG(contributors []Contributor, limit int, colors embedColors) string {
 	sorted := make([]Contributor, len(contributors))
 	copy(sorted, contributors)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -177,7 +177,7 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors badgeCo
 	return b.String()
 }
 
-func emptyStateSVG(width, height int, message string, colors badgeColors) string {
+func emptyStateSVG(width, height int, message string, colors embedColors) string {
 	return fmt.Sprintf(
 		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`+
 			`<rect width="%d" height="%d" fill="%s" rx="8"/>`+

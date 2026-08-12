@@ -1,4 +1,4 @@
-// Shared "build your own badge" widget for the landing page and the setup
+// Shared "build your own embed" widget for the landing page and the setup
 // page. Two things live in this file:
 //
 // 1. A client-side port of cmd/crowdin-stats/render.go's SVG layout, used
@@ -6,7 +6,7 @@
 //    instantly with no network round trip (and, on the landing page,
 //    without a registered project to fetch real data from). Keep this in
 //    sync with render.go if that file's layout constants change.
-// 2. Widget wiring: reads the controls inside a `.badge-builder` root,
+// 2. Widget wiring: reads the controls inside a `.embed-builder` root,
 //    re-renders the preview and the generated URL/markdown on every
 //    change.
 (function () {
@@ -182,7 +182,7 @@
       colors: Object.assign({}, DEFAULT_COLORS),
     };
 
-    var typeButtons = root.querySelectorAll('[data-badge-type]');
+    var typeButtons = root.querySelectorAll('[data-embed-type]');
     var contribControls = root.querySelector('[data-builder-contrib-controls]');
     var limitInput = root.querySelector('[data-builder-limit]');
     var limitValue = root.querySelector('[data-builder-limit-value]');
@@ -197,7 +197,7 @@
 
     function render() {
       typeButtons.forEach(function (btn) {
-        var active = btn.getAttribute('data-badge-type') === state.type;
+        var active = btn.getAttribute('data-embed-type') === state.type;
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
         btn.classList.toggle('bg-accent', active);
         btn.classList.toggle('text-accent-contrast', active);
@@ -227,7 +227,7 @@
 
     typeButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
-        state.type = btn.getAttribute('data-badge-type');
+        state.type = btn.getAttribute('data-embed-type');
         render();
       });
     });
@@ -273,5 +273,5 @@
     render();
   }
 
-  window.CrowdinStatsBadgeBuilder = { init: init };
+  window.CrowdinStatsEmbedBuilder = { init: init };
 })();

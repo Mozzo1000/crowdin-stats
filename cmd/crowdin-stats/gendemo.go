@@ -7,11 +7,11 @@ import (
 )
 
 // generateDemoSVGs writes static/demo-table.svg and static/demo-contributors.svg
-// using the same renderers real badges use, so the landing page's example
+// using the same renderers real embeds use, so the landing page's example
 // never drifts from actual output. Run via `go run . gendemo`.
 //
-// This same dataset is duplicated in static/badge-builder.js (DEMO_LANGUAGES,
-// DEMO_CONTRIBUTORS) for the interactive "build your own badge" widget's
+// This same dataset is duplicated in static/embed-builder.js (DEMO_LANGUAGES,
+// DEMO_CONTRIBUTORS) for the interactive "build your own embed" widget's
 // live preview — keep the two in sync if either changes.
 func generateDemoSVGs() {
 	table := renderTableSVG([]LanguageProgress{
@@ -21,16 +21,16 @@ func generateDemoSVGs() {
 		{LanguageName: "Japanese", Percent: 67},
 		{LanguageName: "Portuguese", Percent: 54},
 		{LanguageName: "Korean", Percent: 31},
-	}, defaultBadgeColors)
+	}, defaultEmbedColors)
 
 	// Avatar URLs point at pravatar.cc's generated-face placeholder service —
 	// consistent-per-ID stock faces, not real people, safe to bake into a
 	// checked-in demo asset. Two entries (noor, ines) are left without an
-	// avatar on purpose, to show the initials-fallback that real badges use
+	// avatar on purpose, to show the initials-fallback that real embeds use
 	// when Crowdin has no avatar on file for a contributor.
 	//
 	// embedAvatarsAsDataURIs fetches and inlines each avatar as it would for
-	// a real badge — required even here, since a browser refuses to load an
+	// a real embed — required even here, since a browser refuses to load an
 	// external <image href> inside an SVG used as <img src> (see avatar.go),
 	// which is exactly how this demo asset is displayed on the landing page.
 	demoContributors := embedAvatarsAsDataURIs(context.Background(), []Contributor{
@@ -47,7 +47,7 @@ func generateDemoSVGs() {
 		{Username: "yui", FullName: "Yui Tanaka", Amount: 810, AvatarURL: "https://i.pravatar.cc/150?img=43"},
 		{Username: "ines", FullName: "Ines Costa", Amount: 700},
 	})
-	contributors := renderContributorsSVG(demoContributors, 10, defaultBadgeColors)
+	contributors := renderContributorsSVG(demoContributors, 10, defaultEmbedColors)
 
 	if err := os.WriteFile("static/demo-table.svg", []byte(table), 0o644); err != nil {
 		slog.Error("write demo-table.svg failed", "error", err)

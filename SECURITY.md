@@ -71,7 +71,7 @@ the service simply loses the ability to call Crowdin on your behalf on its
 next refresh.
 
 To also have your project's row removed from our database, email
-`revoke@yourdomain.eu` with your badge URL. We process these manually; there
+`revoke@crowdin-stats.rewake.org` with your badge URL. We process these manually; there
 is no automated self-service deletion in the current version.
 
 ## Key rotation
@@ -108,6 +108,6 @@ page.
 ## Reporting a vulnerability
 
 If you believe you've found a security issue, please email
-`security@yourdomain.eu` rather than opening a public issue. We'll
+`security@crowdin-stats.rewake.org` rather than opening a public issue. We'll
 acknowledge reports within a reasonable timeframe and credit responsible
 disclosures unless you'd prefer otherwise.

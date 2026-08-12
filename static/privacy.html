@@ -19,7 +19,7 @@
         <p>When you register a project via <code class="font-mono text-accent-mint">/setup</code>, we store:</p>
         <ul class="list-disc list-inside mt-2 space-y-1.5">
           <li>Your Crowdin Project ID, in plaintext.</li>
-          <li>Your Crowdin Personal Access Token, encrypted (see <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the technical detail).</li>
+          <li>Your Crowdin Personal Access Token, encrypted (see <a class="text-accent-mint hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the technical detail).</li>
           <li>A randomly generated <code class="font-mono text-accent-mint">public_id</code>, used in your badge URLs.</li>
           <li>A timestamp of when the project was registered.</li>
         </ul>
@@ -34,17 +34,17 @@
       <section>
         <h2 class="text-text font-medium mb-2">Who can see your data</h2>
         <p>No third-party subprocessors are involved in storing or processing your token — no cloud KMS, no managed database, no external cache provider. The entire data path is the operator's own EU-based virtual machine, plus Crowdin's own API, which you have already chosen to trust by using Crowdin.</p>
-        <p class="mt-2">The encryption key used to protect your token exists only in the server's runtime environment. It is never written to the database, included in backups, or logged — see <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the full guarantee and its honest limits.</p>
+        <p class="mt-2">The encryption key used to protect your token exists only in the server's runtime environment. It is never written to the database, included in backups, or logged — see <a class="text-accent-mint hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the full guarantee and its honest limits.</p>
       </section>
 
       <section>
         <h2 class="text-text font-medium mb-2">How long we keep it</h2>
-        <p>Registered project data is kept until you request deletion by emailing <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a> with your badge URL, or until we remove it at our discretion (e.g. suspected abuse or a long-dead project). Cached SVG output is retained for at most 12 hours plus a short grace period, then either refreshed or swept by an hourly cleanup job.</p>
+        <p>Registered project data is kept until you request deletion by emailing <a class="text-accent-mint hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL, or until we remove it at our discretion (e.g. suspected abuse or a long-dead project). Cached SVG output is retained for at most 12 hours plus a short grace period, then either refreshed or swept by an hourly cleanup job.</p>
       </section>
 
       <section>
         <h2 class="text-text font-medium mb-2">Your rights</h2>
-        <p>Because this service is self-hosted on an EU-based VM, EU/EEA users have rights under the GDPR, including access to and deletion of the data described above. To exercise them, email <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a> with your badge URL (the <code class="font-mono text-accent-mint">public_id</code> is enough to identify your row) — requests are handled manually, and there is no automated self-service deletion in the current version.</p>
+        <p>Because this service is self-hosted on an EU-based VM, EU/EEA users have rights under the GDPR, including access to and deletion of the data described above. To exercise them, email <a class="text-accent-mint hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL (the <code class="font-mono text-accent-mint">public_id</code> is enough to identify your row) — requests are handled manually, and there is no automated self-service deletion in the current version.</p>
       </section>
 
       <section>
@@ -59,7 +59,7 @@
 
       <section>
         <h2 class="text-text font-medium mb-2">Contact</h2>
-        <p>Privacy questions or data requests: <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a>.</p>
+        <p>Privacy questions or data requests: <a class="text-accent-mint hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a>.</p>
       </section>
     </div>
   </main>

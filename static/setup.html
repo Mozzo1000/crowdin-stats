@@ -22,9 +22,44 @@
         <svg class="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
         <span>
           Create a Personal Access Token in Crowdin with <strong class="text-text">Granular Access</strong>, scoped to
-          <strong class="text-text">this one project only</strong>, <strong class="text-text">read-only</strong>.
+          <strong class="text-text">this one project only</strong>.
           <a class="text-accent-mint hover:underline" href="https://crowdin.com/settings#api-key" target="_blank" rel="noopener">Create a token on Crowdin &rarr;</a>
         </span>
+      </p>
+
+      <p class="mt-4 mb-2">Under <strong class="text-text">Scopes</strong>, enable exactly these three and leave everything else unchecked:</p>
+
+      <div class="overflow-x-auto -mx-1">
+        <table class="w-full text-xs font-mono border-collapse">
+          <thead>
+            <tr class="text-text-muted text-left border-b border-border">
+              <th class="py-2 px-1 font-medium">Scope</th>
+              <th class="py-2 px-1 font-medium">Access level</th>
+            </tr>
+          </thead>
+          <tbody class="text-text">
+            <tr class="border-b border-border">
+              <td class="py-2 px-1">Projects</td>
+              <td class="py-2 px-1 text-accent-mint">Read only</td>
+            </tr>
+            <tr class="border-b border-border">
+              <td class="py-2 px-1">Translation status</td>
+              <td class="py-2 px-1 text-accent-mint">Read only</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-1">Reports</td>
+              <td class="py-2 px-1 text-accent-amber">Read and Write</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="mt-4 text-xs">
+        <strong class="text-text">Why does Reports need Write access?</strong> Generating the contributor report is
+        technically a write-style API call in Crowdin's permission model, even though it only reads translation
+        activity — it doesn't create or change anything in your project. We don't use the
+        <strong class="text-text">Members</strong> scope at all: it lists who has project access, not how much
+        each person has translated, which is what the contributor grid is ranked by.
       </p>
     </div>
 
@@ -33,6 +68,9 @@
         <label for="project-id" class="block text-sm font-medium mb-1.5">Crowdin Project ID</label>
         <input id="project-id" name="crowdin_project_id" type="text" inputmode="numeric" required
                class="field-mono w-full" placeholder="123456" autocomplete="off" />
+        <p class="mt-1.5 text-xs text-text-muted">
+          The numeric project ID, not the URL slug — find it in your project under <strong class="text-text">Tools → API</strong>.
+        </p>
       </div>
 
       <div>

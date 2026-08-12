@@ -52,11 +52,14 @@ registering a private project's token with this service.
 ## What the token can do
 
 We ask you to create your token using Crowdin's **Granular Access** option,
-scoped to **one project only**, with **read-only** permissions. This is
-enforced by instructions during setup, not by anything on our side — nothing
-prevents you from pasting a broader-scoped token, but doing so widens the
-blast radius of any compromise (ours or otherwise) beyond what this service
-actually needs.
+scoped to **one project only**, with exactly three scopes enabled: **Projects**
+(Read only), **Translation status** (Read only), and **Reports** (Read and
+Write — Crowdin requires Write access to generate a report even though doing
+so only reads translation activity and changes nothing in your project). The
+exact scopes and levels are shown in the setup guide. This is enforced by
+instructions during setup, not by anything on our side — nothing prevents you
+from pasting a broader-scoped token, but doing so widens the blast radius of
+any compromise (ours or otherwise) beyond what this service actually needs.
 
 With a correctly scoped token, this service can read translation progress
 and top-contributor reports for the one project you registered. It cannot

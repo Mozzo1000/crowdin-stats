@@ -55,8 +55,8 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-4 4-6 6v3h3l6-6"/></svg>
           </span>
           <div>
-            <p class="font-medium">Create a read-only, project-scoped Crowdin token</p>
-            <p class="text-text-muted text-sm mt-1">Granular Access, scoped to one project, read-only permissions.</p>
+            <p class="font-medium">Create a minimally-scoped, project-scoped Crowdin token</p>
+            <p class="text-text-muted text-sm mt-1">Granular Access, scoped to one project, with only the handful of scopes badges actually need — see the setup guide for the exact list.</p>
           </div>
         </li>
         <li class="flex gap-4">
@@ -126,7 +126,7 @@
         <div>
           <dt class="font-medium">What can the token you're storing actually do?</dt>
           <dd class="text-text-muted text-sm mt-2 leading-relaxed">
-            If you follow the Granular Access + read-only + single-project setup instructed during onboarding, a worst-case compromise of our database (ciphertext only) or of a live decrypted token in transit is limited to read-only access to that one project — it cannot modify translations, invite members, or access any other project. This is your responsibility to configure correctly; nothing on Crowdin's side enforces it if you paste a broader-scoped token instead.
+            If you follow the Granular Access + single-project setup instructed during onboarding — Projects and Translation status set to Read only, Reports set to Read and Write (Crowdin requires Write to generate a report, even though generating one only reads translation activity and changes nothing in your project) — a worst-case compromise of our database (ciphertext only) or of a live decrypted token in transit is limited to reading translation progress and contributor activity for that one project. It cannot modify translations, invite members, or access any other project. This is your responsibility to configure correctly; nothing on Crowdin's side enforces it if you paste a broader-scoped token instead.
           </dd>
         </div>
         <div>

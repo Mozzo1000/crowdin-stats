@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>crowdin-stats — live translation embeds for your README</title>
+  <title>crowdin-stats — live translation images for your README</title>
   <meta name="description" content="Generate live, embeddable SVG images showing Crowdin translation progress and top contributors, without exposing your Crowdin token." />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
@@ -46,11 +46,11 @@
         Display your translation progress, right in your README.
       </h1>
       <p class="mt-4 text-text-muted max-w-xl">
-        Connect your Crowdin project once. Get two embeds — translation progress and top contributors — that stay live and update themselves, with nothing to rebuild or maintain.
+        Connect your Crowdin project once. Get two images — translation progress and top contributors — that stay live and update themselves, with nothing to rebuild or maintain.
       </p>
 
       <div class="mt-8 flex flex-wrap gap-3">
-        <a href="/setup" class="btn-primary">Set up your embeds</a>
+        <a href="/setup" class="btn-primary">Generate images</a>
         <a href="https://github.com/mozzo1000/crowdin-stats" class="btn-secondary inline-flex items-center gap-2">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.15-1.11-1.46-1.11-1.46-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.3 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.69 0 3.85-2.34 4.7-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
           View on GitHub
@@ -61,8 +61,8 @@
       <div class="mt-12 panel p-4 sm:p-6 shadow-sm">
         <p class="text-text-muted text-xs font-medium mb-4">What appears in your README</p>
         <div class="space-y-4 overflow-x-auto">
-          <img src="/static/demo-table.svg" alt="Example translation progress embed" class="max-w-full" />
-          <img src="/static/demo-contributors.svg" alt="Example contributors embed" class="max-w-full" />
+          <img src="/static/demo-table.svg" alt="Example translation progress image" class="max-w-full" />
+          <img src="/static/demo-contributors.svg" alt="Example contributors image" class="max-w-full" />
         </div>
       </div>
     </section>
@@ -94,7 +94,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
           </span>
           <div>
-            <p class="font-medium">Add the embeds to your README</p>
+            <p class="font-medium">Add the images to your README</p>
             <p class="text-text-muted text-sm mt-1">From there they take care of themselves — nothing to rebuild, run, or remember.</p>
           </div>
         </li>
@@ -104,7 +104,7 @@
     <!-- Customization -->
     <section class="py-16 border-t border-border">
       <h2 class="text-xl font-semibold mb-2">Build your own</h2>
-      <p class="text-text-muted mb-6">Pick an embed type, tweak the colors, and copy the URL. Everything here is just a query string — no re-onboarding required to change it later. This preview uses sample data; once you're set up, swap <code class="font-mono text-accent">&#123;public_id&#125;</code> for your real one.</p>
+      <p class="text-text-muted mb-6">Pick an image type, tweak the colors, and copy the URL. Everything here is just a query string — no re-onboarding required to change it later. This preview uses sample data; once you're set up, swap <code class="font-mono text-accent">&#123;public_id&#125;</code> for your real one.</p>
 
       <div class="embed-builder panel p-5">
         <div class="flex gap-2 mb-5">
@@ -205,7 +205,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your embed will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you send us that revoke email. It's a manual step on our end, not something that quietly expires on its own.
+            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your image will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you send us that revoke email. It's a manual step on our end, not something that quietly expires on its own.
           </p>
         </details>
         <details class="faq-item">

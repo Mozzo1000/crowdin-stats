@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Set up your embeds — crowdin-stats</title>
+  <title>Generate your images — crowdin-stats</title>
   <meta name="referrer" content="no-referrer" />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
@@ -37,7 +37,7 @@
   </header>
 
   <main class="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16">
-    <h1 class="text-2xl font-semibold">Set up your embeds</h1>
+    <h1 class="text-2xl font-semibold">Generate your images</h1>
     <p class="mt-2 text-text-muted text-sm">
       Takes under a minute. No account, no login — the embed URLs you get back are the only thing that identifies your project.
     </p>
@@ -112,7 +112,7 @@
         </div>
       </div>
 
-      <button type="submit" id="submit-btn" class="btn-primary w-full">Generate embeds</button>
+      <button type="submit" id="submit-btn" class="btn-primary w-full">Generate images</button>
 
       <p id="error-msg" class="hidden text-sm text-red-600 dark:text-red-400"></p>
     </form>
@@ -135,7 +135,7 @@
 
       <div>
         <h2 class="text-lg font-semibold mb-1">Want a different look?</h2>
-        <p class="text-text-muted text-sm mb-4">Build a custom version of either embed below — this preview is your real project's live data, and the URL updates as you go.</p>
+        <p class="text-text-muted text-sm mb-4">Build a custom version of either image below — this preview is your real project's live data, and the URL updates as you go.</p>
 
         <div class="embed-builder panel p-5">
           <div class="flex gap-2 mb-5">
@@ -189,7 +189,7 @@
           </div>
 
           <div class="mb-4 overflow-x-auto">
-            <img data-builder-preview-img class="max-w-full" alt="Live embed preview with your chosen settings" />
+            <img data-builder-preview-img class="max-w-full" alt="Live image preview with your chosen settings" />
           </div>
 
           <div class="flex items-center gap-2">
@@ -298,7 +298,7 @@
         errorMsg.textContent = message;
         errorMsg.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate embeds';
+        submitBtn.textContent = 'Generate images';
       }
     });
 

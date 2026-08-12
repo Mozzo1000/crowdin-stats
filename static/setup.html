@@ -180,28 +180,50 @@
         token: tokenInput.value.trim(),
       };
 
+      let res;
       try {
-        const res = await fetch('/setup', {
+        res = await fetch('/setup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || 'setup failed');
-        }
-
-        const data = await res.json();
-
-        form.reset();
-        form.classList.add('hidden');
-
-        document.getElementById('markdown-output').textContent = data.markdown;
-        document.getElementById('preview-img').src = data.table_url;
-        results.classList.remove('hidden');
       } catch (err) {
-        errorMsg.textContent = err.message || 'Something went wrong — please try again.';
+        // fetch() itself only throws for a failed connection — DNS, no
+        // network, server unreachable, refused, etc. It never throws for
+        // an HTTP error status, so this is always a connectivity problem,
+        // not something about the submitted token or project ID.
+        showError('Could not reach the server. Check your internet connection and try again.');
+        return;
+      }
+
+      if (!res.ok) {
+        let text = '';
+        try {
+          text = await res.text();
+        } catch (err) {
+          // response body failed to read; fall through to the generic message below
+        }
+        showError(text || `Setup failed (server responded with status ${res.status}).`);
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        showError('The server sent back a response we could not understand. Please try again.');
+        return;
+      }
+
+      form.reset();
+      form.classList.add('hidden');
+
+      document.getElementById('markdown-output').textContent = data.markdown;
+      document.getElementById('preview-img').src = data.table_url;
+      results.classList.remove('hidden');
+
+      function showError(message) {
+        errorMsg.textContent = message;
         errorMsg.classList.remove('hidden');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Generate badges';

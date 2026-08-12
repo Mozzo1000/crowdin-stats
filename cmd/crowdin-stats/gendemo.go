@@ -43,15 +43,30 @@ func generateDemoSVGs() {
 		{Username: "yui", FullName: "Yui Tanaka", Amount: 810, AvatarURL: "https://i.pravatar.cc/150?img=43"},
 		{Username: "ines", FullName: "Ines Costa", Amount: 700},
 	})
-	contributors := renderContributorsSVG(demoContributors, 30)
+	// Only 12 fake contributors exist above, so the two example renders use
+	// limits that actually demonstrate the effect against that dataset (5 vs
+	// 10) rather than the real-world default/max (30/100), which would
+	// render identically to "no limit" and prove nothing.
+	contributorsLimit10 := renderContributorsSVG(demoContributors, 10)
+	// A real limit=5 render, not a CSS crop of the limit=10 image — cropping
+	// cut circles off mid-row instead of showing what the parameter actually
+	// produces.
+	contributorsLimit5 := renderContributorsSVG(demoContributors, 5)
 
 	if err := os.WriteFile("static/demo-table.svg", []byte(table), 0o644); err != nil {
 		slog.Error("write demo-table.svg failed", "error", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile("static/demo-contributors.svg", []byte(contributors), 0o644); err != nil {
+	if err := os.WriteFile("static/demo-contributors.svg", []byte(contributorsLimit10), 0o644); err != nil {
 		slog.Error("write demo-contributors.svg failed", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("wrote demo SVGs", "table", "static/demo-table.svg", "contributors", "static/demo-contributors.svg")
+	if err := os.WriteFile("static/demo-contributors-limit5.svg", []byte(contributorsLimit5), 0o644); err != nil {
+		slog.Error("write demo-contributors-limit5.svg failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("wrote demo SVGs",
+		"table", "static/demo-table.svg",
+		"contributors", "static/demo-contributors.svg",
+		"contributors-limit5", "static/demo-contributors-limit5.svg")
 }

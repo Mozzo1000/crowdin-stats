@@ -76,8 +76,8 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-4 4-6 6v3h3l6-6"/></svg>
           </span>
           <div>
-            <p class="font-medium">Create a minimally-scoped Crowdin token</p>
-            <p class="text-text-muted text-sm mt-1">Granular Access, scoped to one project, with only the handful of permissions badges actually need — see the setup guide for the exact list.</p>
+            <p class="font-medium">Create a Crowdin token</p>
+            <p class="text-text-muted text-sm mt-1">Our setup guide walks you through it — just a few scopes, nothing your project doesn't need.</p>
           </div>
         </li>
         <li class="flex gap-4">
@@ -85,8 +85,8 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 1 1 8 0v3"/></svg>
           </span>
           <div>
-            <p class="font-medium">Paste it once — we encrypt it immediately</p>
-            <p class="text-text-muted text-sm mt-1">Encrypted at rest before the row ever hits disk. See below for exactly how.</p>
+            <p class="font-medium">Paste it in</p>
+            <p class="text-text-muted text-sm mt-1">It's encrypted the moment we receive it, and never stored anywhere in plain text.</p>
           </div>
         </li>
         <li class="flex gap-4">
@@ -94,36 +94,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
           </span>
           <div>
-            <p class="font-medium">Copy two image links into your README</p>
-            <p class="text-text-muted text-sm mt-1">They stay live — no rebuild, no CI step, no manual refresh.</p>
+            <p class="font-medium">Add the badges to your README</p>
+            <p class="text-text-muted text-sm mt-1">From there they take care of themselves — nothing to rebuild, run, or remember.</p>
           </div>
         </li>
       </ol>
-    </section>
-
-    <!-- Security -->
-    <section class="py-16 border-t border-border">
-      <h2 class="text-xl font-semibold mb-2">How your token is protected</h2>
-      <p class="text-text-muted mb-6">A short, honest summary — the full technical detail is one click away.</p>
-      <div class="panel p-6">
-        <ul class="space-y-3 text-sm text-text">
-          <li class="flex gap-3">
-            <svg class="shrink-0 mt-0.5 text-success" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>Your token is encrypted before it's stored — never written to disk in plain text.</span>
-          </li>
-          <li class="flex gap-3">
-            <svg class="shrink-0 mt-0.5 text-success" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>The encryption key lives only in the server's runtime environment — never in the database, a backup, or a log.</span>
-          </li>
-          <li class="flex gap-3">
-            <svg class="shrink-0 mt-0.5 text-success" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>A copy of the database alone can't recover your token.</span>
-          </li>
-        </ul>
-        <p class="mt-5 text-sm">
-          <a href="https://github.com/mozzo1000/crowdin-stats" class="text-accent hover:underline font-medium">See exactly how in the source code →</a>
-        </p>
-      </div>
     </section>
 
     <!-- Customization -->
@@ -131,7 +106,7 @@
       <h2 class="text-xl font-semibold mb-4">Customize the contributor grid</h2>
       <p class="text-text-muted mb-6">These are all just query string values on the URL — no re-onboarding required to change them.</p>
       <div class="panel p-4 font-mono text-xs text-accent break-all">
-        /embed/&#123;public_id&#125;/contributors.svg?limit=10&amp;unit=words&amp;hideOwner=true
+        /embed/&#123;public_id&#125;/contributors.svg?limit=5&amp;unit=words&amp;hideOwner=true
       </div>
       <ul class="mt-4 text-text-muted text-sm space-y-1.5">
         <li><code class="font-mono text-accent">limit</code> — how many contributors to show, 1–100 (default 30)</li>
@@ -140,12 +115,12 @@
       </ul>
       <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">limit=10</p>
-          <img src="/static/demo-contributors.svg" alt="Contributors grid at limit 10" class="max-w-full" style="clip-path: inset(0 0 calc(100% - 62px) 0)" />
+          <p class="text-text-muted text-xs font-mono mb-2">limit=5</p>
+          <img src="/static/demo-contributors-limit5.svg" alt="Contributors grid at limit 5" class="max-w-full" />
         </div>
         <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">limit=30</p>
-          <img src="/static/demo-contributors.svg" alt="Contributors grid at limit 30" class="max-w-full" />
+          <p class="text-text-muted text-xs font-mono mb-2">limit=10</p>
+          <img src="/static/demo-contributors.svg" alt="Contributors grid at limit 10" class="max-w-full" />
         </div>
       </div>
     </section>
@@ -160,8 +135,8 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Delete the Personal Access Token in your Crowdin account — this is the real kill switch and takes effect immediately, before the service's cache even expires.
-            To also remove your project's row from our database, email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL. We manually confirm and delete within a few days — no automated self-service delete exists yet, and this page says so plainly rather than implying one does.
+            Delete the Personal Access Token in your Crowdin account. That's the real kill switch, and it works immediately, even before our cache expires.
+            If you'd also like your project removed from our database, email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL. We handle these by hand and usually get to it within a few days. There's no self-service delete button yet, so we'd rather tell you that up front than let you assume there is.
           </p>
         </details>
         <details class="faq-item">
@@ -170,7 +145,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            If you follow the Granular Access + single-project setup instructed during onboarding — Projects and Translation status set to Read only, Reports set to Read and Write (Crowdin requires Write to generate a report, even though generating one only reads translation activity and changes nothing in your project) — a worst-case compromise of our database (ciphertext only) or of a live decrypted token in transit is limited to reading translation progress and contributor activity for that one project. It cannot modify translations, invite members, or access any other project. This is your responsibility to configure correctly; nothing on Crowdin's side enforces it if you paste a broader-scoped token instead.
+            If you set it up the way our guide recommends (Projects and Translation status as Read only, Reports as Read and Write, since Crowdin requires Write access just to generate a report even though nothing actually changes), then a worst case scenario, whether that's our database being compromised or a token being intercepted mid-use, only exposes read access to translation progress and contributor activity on that one project. It can't touch translations, invite anyone, or reach any other project on your account. That said, we can't enforce those scopes on Crowdin's side. If you paste in a token with broader access, it'll still work, it's just on you to know that widens the risk.
           </p>
         </details>
         <details class="faq-item">
@@ -179,7 +154,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            The badge endpoints will start failing (Crowdin returns 401) on the next cache refresh; the last successfully cached SVG keeps being served stale until it errors out, at which point the image simply stops updating. The row stays in the database, encrypted and unusable, until a revoke email is sent — a manual-cleanup limitation, not a hidden auto-expiry.
+            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your badge will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you send us that revoke email. It's a manual step on our end, not something that quietly expires on its own.
           </p>
         </details>
         <details class="faq-item">
@@ -188,7 +163,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Only what your scoped token permits — translation progress and top-members reports on the one project you registered. The Crowdin Project ID itself (not the token) is stored unencrypted, since it isn't a credential — relevant mainly if your project is private. See <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the precise statement.
+            Only what your token allows us to see: translation progress and top contributor stats for the one project you registered. Your Crowdin Project ID is stored as plain text, since it isn't a credential on its own, though that's worth knowing if your project happens to be private. The full details are in <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a>.
           </p>
         </details>
         <details class="faq-item">
@@ -197,7 +172,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            No — independent, unofficial, built against Crowdin's public API using their official Go client.
+            No. This is an independent, unofficial project built on top of Crowdin's public API using their official Go client.
           </p>
         </details>
         <details class="faq-item">
@@ -206,7 +181,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Just edit the query string in the README — no need to re-onboard, the <code class="font-mono text-accent">public_id</code> doesn't change.
+            Just change the query string in your README. There's nothing to set up again since your <code class="font-mono text-accent">public_id</code> stays the same either way.
           </p>
         </details>
         <details class="faq-item">
@@ -215,7 +190,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats">Right here on GitHub</a> — for a tool asking for API tokens, being able to read exactly what it does is a stronger trust signal than any explanation on this page.
+            <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats">Right here on GitHub.</a> For a tool that asks you for an API token, being able to read the actual code counts for a lot more than anything we could write on this page.
           </p>
         </details>
       </div>

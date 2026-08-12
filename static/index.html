@@ -103,8 +103,10 @@
 
     <!-- Customization -->
     <section class="py-16 border-t border-border">
-      <h2 class="text-xl font-semibold mb-4">Customize the contributor grid</h2>
+      <h2 class="text-xl font-semibold mb-4">Customize your badges</h2>
       <p class="text-text-muted mb-6">These are all just query string values on the URL — no re-onboarding required to change them.</p>
+
+      <h3 class="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">Contributor grid</h3>
       <div class="panel p-4 font-mono text-xs text-accent break-all">
         /embed/&#123;public_id&#125;/contributors.svg?limit=5&amp;unit=words&amp;hideOwner=true
       </div>
@@ -121,6 +123,30 @@
         <div class="panel p-4">
           <p class="text-text-muted text-xs font-mono mb-2">limit=10</p>
           <img src="/static/demo-contributors.svg" alt="Contributors grid at limit 10" class="max-w-full" />
+        </div>
+      </div>
+
+      <h3 class="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3 mt-10">Colors</h3>
+      <p class="text-text-muted text-sm mb-4">Both <code class="font-mono text-accent">table.svg</code> and <code class="font-mono text-accent">contributors.svg</code> take the same five color params, so you can match either badge to a light README, a dark one, or your own brand.</p>
+      <div class="panel p-4 font-mono text-xs text-accent break-all">
+        /embed/&#123;public_id&#125;/table.svg?bg=ffffff&amp;text=1f2a33&amp;muted=64748b&amp;accent=2f6fed&amp;border=e2e8f0
+      </div>
+      <ul class="mt-4 text-text-muted text-sm space-y-1.5">
+        <li><code class="font-mono text-accent">bg</code> — card background</li>
+        <li><code class="font-mono text-accent">text</code> — primary text (language names)</li>
+        <li><code class="font-mono text-accent">muted</code> — secondary text (percentages, initials, empty-state messages)</li>
+        <li><code class="font-mono text-accent">accent</code> — progress bar fill</li>
+        <li><code class="font-mono text-accent">border</code> — bar track, avatar ring, and fallback avatar background</li>
+      </ul>
+      <p class="text-text-muted text-sm mt-3">Each is a 3- or 6-digit hex color, with or without a leading <code class="font-mono text-accent">#</code> (URL-encode it as <code class="font-mono text-accent">%23</code> if you include it). Anything invalid is quietly ignored in favor of the default, so a typo never breaks the badge.</p>
+      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="panel p-4">
+          <p class="text-text-muted text-xs font-mono mb-2">default</p>
+          <img src="/static/demo-table.svg" alt="Translation progress badge with default colors" class="max-w-full" />
+        </div>
+        <div class="panel p-4">
+          <p class="text-text-muted text-xs font-mono mb-2">bg=ffffff&amp;text=1f2a33&amp;accent=2f6fed...</p>
+          <img src="/static/demo-table-custom-colors.svg" alt="Translation progress badge with a custom light color scheme" class="max-w-full" />
         </div>
       </div>
     </section>

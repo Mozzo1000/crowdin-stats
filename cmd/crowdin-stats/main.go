@@ -8,6 +8,7 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -205,6 +206,19 @@ func trimToDigits(s string) string {
 	return string(out)
 }
 
+// parseBadgeColors reads the shared bg/text/muted/accent/border query
+// params, falling back to defaultBadgeColors per-field for anything
+// missing or not a valid 3- or 6-digit hex color.
+func parseBadgeColors(q url.Values) badgeColors {
+	return badgeColors{
+		bg:     sanitizeHexColor(q.Get("bg"), defaultBadgeColors.bg),
+		text:   sanitizeHexColor(q.Get("text"), defaultBadgeColors.text),
+		muted:  sanitizeHexColor(q.Get("muted"), defaultBadgeColors.muted),
+		accent: sanitizeHexColor(q.Get("accent"), defaultBadgeColors.accent),
+		border: sanitizeHexColor(q.Get("border"), defaultBadgeColors.border),
+	}
+}
+
 func (s *server) handleTableBadge(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
 	p, err := getProject(s.db, publicID)
@@ -213,9 +227,12 @@ func (s *server) handleTableBadge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svg, err := getOrRefresh(r.Context(), s.db, "table:"+publicID, publicID, s.renderTable(p), s.noCache)
+	colors := parseBadgeColors(r.URL.Query())
+
+	cacheKey := "table:" + publicID + ":" + colors.cacheKeyFragment()
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderTable(p, colors), s.noCache)
 	if err != nil {
-		s.handleBadgeError(w, err)
+		s.handleBadgeError(w, err, colors)
 		return
 	}
 	writeSVG(w, svg)
@@ -250,11 +267,12 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 	}
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
+	colors := parseBadgeColors(r.URL.Query())
 
-	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner), s.noCache)
+	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner) + ":" + colors.cacheKeyFragment()
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner, colors), s.noCache)
 	if err != nil {
-		s.handleBadgeError(w, err)
+		s.handleBadgeError(w, err, colors)
 		return
 	}
 	writeSVG(w, svg)
@@ -264,16 +282,16 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 // plain-text error body: these routes are consumed as <img src> in READMEs,
 // and a non-image response renders as a broken image icon with no
 // explanation. The real error is still logged server-side.
-func (s *server) handleBadgeError(w http.ResponseWriter, err error) {
+func (s *server) handleBadgeError(w http.ResponseWriter, err error, colors badgeColors) {
 	if errors.Is(err, errRateLimited) {
-		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly"))
+		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly", colors))
 		return
 	}
 	slog.Warn("badge render failed", "error", err)
-	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable"))
+	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
 }
 
-func (s *server) renderTable(p project) fetchFunc {
+func (s *server) renderTable(p project, colors badgeColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -283,11 +301,11 @@ func (s *server) renderTable(p project) fetchFunc {
 		if err != nil {
 			return "", err
 		}
-		return renderTableSVG(langs), nil
+		return renderTableSVG(langs, colors), nil
 	}
 }
 
-func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool) fetchFunc {
+func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool, colors badgeColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -297,7 +315,7 @@ func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideO
 		if err != nil {
 			return "", err
 		}
-		return renderContributorsSVG(contributors, limit), nil
+		return renderContributorsSVG(contributors, limit, colors), nil
 	}
 }
 

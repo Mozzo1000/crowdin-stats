@@ -316,5 +316,5 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 			Amount:    int64(row.Translated) + int64(row.Approved),
 		})
 	}
-	return out, nil
+	return embedAvatarsAsDataURIs(ctx, out), nil
 }

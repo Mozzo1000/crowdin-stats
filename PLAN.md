@@ -894,7 +894,19 @@ chosen to trust by using Crowdin.
   when needed (e.g. manual revocation).
 - No automated `MASTER_KEY` rotation — documented manual limitation, see
   §5.4.
-- No SSRF-prone server-side avatar fetching — `contributors.svg` embeds
-  avatar URLs directly via `<image href>`, resolved client-side by the
-  viewer's browser, not fetched/proxied by the server. Keep it this way
-  deliberately if revisiting avatar handling later.
+- ~~No SSRF-prone server-side avatar fetching~~ — **reversed post-v1.**
+  `contributors.svg` originally embedded avatar URLs directly via
+  `<image href>`, left for the viewer's browser to resolve client-side.
+  Real-world testing showed this doesn't actually work: browsers refuse to
+  load an external `<image href>` inside an SVG when that SVG is used as
+  an `<img src>` — which is exactly how every badge is displayed in a
+  README (confirmed against Firefox bug 628747, "SVG-as-an-image
+  shouldn't be able to load external resources"). Opening the raw SVG URL
+  directly worked fine, which made this easy to miss in manual testing.
+  The fix (`avatar.go`): fetch each avatar server-side and inline it as a
+  base64 `data:` URI at render time, matching how contrib.rocks and
+  similar tools handle this. SSRF exposure is bounded, not eliminated:
+  HTTPS-only, 5s timeout, 2MB body cap, `Content-Type` must start with
+  `image/`, and any failure just falls back to the initials circle rather
+  than erroring the whole badge. The avatar URL itself comes from
+  Crowdin's own report response, not directly from user input.

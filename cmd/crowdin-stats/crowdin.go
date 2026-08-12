@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdin/crowdin-api-client-go/crowdin"
@@ -118,6 +119,27 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 	return out, nil
 }
 
+// flexibleInt decodes a JSON field that Crowdin's report export sometimes
+// emits as a quoted string and sometimes as a bare number (observed across
+// report formats/versions) — encoding/json's json.Number only accepts the
+// bare-number form and hard-fails on a quoted one, which was silently
+// breaking every contributors.svg render.
+type flexibleInt int64
+
+func (f *flexibleInt) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		*f = 0
+		return nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return fmt.Errorf("flexibleInt: %w", err)
+	}
+	*f = flexibleInt(n)
+	return nil
+}
+
 // topMembersReportRow mirrors the shape of the JSON exported by the
 // "top-members" report. This shape is not modeled by the official Crowdin Go
 // client (Download only returns a signed URL to the raw file), so it's
@@ -129,8 +151,8 @@ type topMembersReportRow struct {
 		FullName  string `json:"fullName"`
 		AvatarURL string `json:"avatarUrl"`
 	} `json:"user"`
-	Translated json.Number `json:"translated"`
-	Approved   json.Number `json:"approved"`
+	Translated flexibleInt `json:"translated"`
+	Approved   flexibleInt `json:"approved"`
 }
 
 type topMembersReport struct {
@@ -239,13 +261,11 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		if row.User.Username == "REMOVED_USER" {
 			continue
 		}
-		amount, _ := row.Translated.Int64()
-		approved, _ := row.Approved.Int64()
 		out = append(out, Contributor{
 			Username:  row.User.Username,
 			FullName:  row.User.FullName,
 			AvatarURL: row.User.AvatarURL,
-			Amount:    amount + approved,
+			Amount:    int64(row.Translated) + int64(row.Approved),
 		})
 	}
 	return out, nil

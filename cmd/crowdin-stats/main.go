@@ -54,8 +54,8 @@ func main() {
 	mux.HandleFunc("GET /terms", serveStaticFile("static/terms.html"))
 	mux.HandleFunc("GET /privacy", serveStaticFile("static/privacy.html"))
 	mux.HandleFunc("POST /setup", s.handleSetup)
-	mux.HandleFunc("GET /badge/{publicID}/table.svg", s.handleTableBadge)
-	mux.HandleFunc("GET /badge/{publicID}/contributors.svg", s.handleContributorsBadge)
+	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableBadge)
+	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsBadge)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -163,8 +163,8 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base := hostBaseURL(r)
-	tableURL := base + "/badge/" + publicID + "/table.svg"
-	contribURL := base + "/badge/" + publicID + "/contributors.svg?limit=30&unit=words"
+	tableURL := base + "/embed/" + publicID + "/table.svg"
+	contribURL := base + "/embed/" + publicID + "/contributors.svg?limit=30&unit=words"
 	resp := setupResponse{
 		TableURL:        tableURL,
 		ContributorsURL: contribURL,
@@ -250,13 +250,17 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 	writeSVG(w, svg)
 }
 
+// handleBadgeError always responds with a valid SVG image rather than a
+// plain-text error body: these routes are consumed as <img src> in READMEs,
+// and a non-image response renders as a broken image icon with no
+// explanation. The real error is still logged server-side.
 func (s *server) handleBadgeError(w http.ResponseWriter, err error) {
 	if errors.Is(err, errRateLimited) {
-		http.Error(w, "too many refresh requests, try again later", http.StatusTooManyRequests)
+		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly"))
 		return
 	}
 	slog.Warn("badge render failed", "error", err)
-	http.Error(w, "could not render badge", http.StatusBadGateway)
+	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable"))
 }
 
 func (s *server) renderTable(p project) fetchFunc {

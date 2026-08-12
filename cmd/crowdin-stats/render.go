@@ -8,11 +8,15 @@ import (
 )
 
 const (
-	tableRowHeight  = 28
-	tableWidth      = 360
-	tableBarWidth   = 200
-	tablePaddingX   = 12
-	tablePaddingTop = 12
+	tableRowHeight   = 28
+	tableWidth       = 360
+	tableLabelWidth  = 110
+	tableBarWidth    = 160
+	tableBarGap      = 8
+	tablePercentGap  = 8
+	tablePercentArea = 50
+	tablePaddingX    = 12
+	tablePaddingTop  = 12
 )
 
 // renderTableSVG renders a horizontal progress bar per language.
@@ -36,19 +40,19 @@ func renderTableSVG(languages []LanguageProgress) string {
 		tableWidth, height, tableWidth, height)
 	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="#12161F" rx="8"/>`, tableWidth, height)
 
-	labelWidth := tableWidth - tableBarWidth - tablePaddingX*3
+	barX := tablePaddingX + tableLabelWidth + tableBarGap
+	percentX := tableWidth - tablePaddingX
 	for i, lang := range sorted {
 		y := tablePaddingTop + i*tableRowHeight
-		barX := tablePaddingX*2 + labelWidth
 		fmt.Fprintf(&b, `<text x="%d" y="%d" fill="#E8EAED" font-size="12" dominant-baseline="middle">%s</text>`,
-			tablePaddingX, y+tableRowHeight/2, truncateLabel(lang.LanguageName, 22))
+			tablePaddingX, y+tableRowHeight/2, truncateLabel(lang.LanguageName, 16))
 		fmt.Fprintf(&b, `<rect x="%d" y="%d" width="%d" height="10" rx="5" fill="#232834"/>`,
 			barX, y+tableRowHeight/2-5, tableBarWidth)
 		filled := tableBarWidth * clampPercent(lang.Percent) / 100
 		fmt.Fprintf(&b, `<rect x="%d" y="%d" width="%d" height="10" rx="5" fill="#7DD3A8"/>`,
 			barX, y+tableRowHeight/2-5, filled)
 		fmt.Fprintf(&b, `<text x="%d" y="%d" fill="#8B93A3" font-size="11" text-anchor="end" dominant-baseline="middle">%d%%</text>`,
-			tableWidth-tablePaddingX, y+tableRowHeight/2, clampPercent(lang.Percent))
+			percentX, y+tableRowHeight/2, clampPercent(lang.Percent))
 	}
 	b.WriteString(`</svg>`)
 	return b.String()

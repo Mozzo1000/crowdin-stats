@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms of Service — crowdin-stats</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="bg-ink text-text font-sans antialiased">
+  <main class="max-w-2xl mx-auto px-6 py-16">
+    <a href="/" class="text-text-muted text-sm hover:text-text">&larr; crowdin-stats</a>
+
+    <h1 class="mt-6 text-2xl font-semibold">Terms of Service</h1>
+    <p class="mt-2 text-text-muted text-sm">Last updated: 2026-08-12</p>
+
+    <div class="mt-8 space-y-8 text-sm leading-relaxed text-text-muted">
+      <section>
+        <h2 class="text-text font-medium mb-2">1. What this service does</h2>
+        <p>crowdin-stats generates two SVG images per registered Crowdin project — a translation progress table and a contributor grid — for embedding in READMEs or other Markdown documents. It reads data from the Crowdin API using a token you provide and re-renders it as an image on request.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">2. No account, no warranty of continuity</h2>
+        <p>There is no user account or login. Access to your badge configuration is controlled entirely by the unguessable <code class="font-mono text-accent-mint">public_id</code> in your badge URLs and by your Crowdin token itself. Because there is no account recovery mechanism, losing your badge URLs means re-running setup.</p>
+        <p class="mt-2">This service is provided <strong class="text-text">as-is, without warranty of any kind</strong>, express or implied, including but not limited to availability, uptime, or fitness for a particular purpose. It is operated on a best-effort basis by an independent maintainer, not a company with an SLA.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">3. Your responsibilities</h2>
+        <ul class="list-disc list-inside space-y-1.5">
+          <li>Provide a Crowdin Personal Access Token scoped, as instructed during setup, to Granular Access, read-only, and a single project. Nothing on our side enforces this scope — a broader token widens the blast radius of any compromise.</li>
+          <li>Do not use this service to store or process tokens you are not authorized to use.</li>
+          <li>Do not attempt to abuse, flood, or circumvent the rate limits described in the project's source and <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">4. Data handling</h2>
+        <p>What we store, how your token is encrypted, and the honest limits of that protection are described in full in <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> and the <a class="text-accent-mint hover:underline" href="/privacy">Privacy Policy</a>. Both documents are part of these Terms by reference.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">5. Revocation and termination</h2>
+        <p>You may stop this service's access to your Crowdin project at any time by deleting the Personal Access Token in your Crowdin account — see the <a class="text-accent-mint hover:underline" href="/#faq">FAQ</a> for how to also request deletion of your database row.</p>
+        <p class="mt-2">We reserve the right to revoke or delete any registered project's data at our discretion, including for suspected abuse, without prior notice.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">6. Liability</h2>
+        <p>To the maximum extent permitted by law, the operator of this service is not liable for any damages arising from its use, misuse, unavailability, or from a compromise of the underlying Crowdin token — including a token pasted with broader scope than instructed.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">7. Changes</h2>
+        <p>These Terms may change as the service evolves. Material changes will be reflected in the "Last updated" date above and, where practical, noted in the project's repository.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">8. Contact</h2>
+        <p>Questions about these Terms: <a class="text-accent-mint hover:underline" href="mailto:legal@yourdomain.eu">legal@yourdomain.eu</a>.</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

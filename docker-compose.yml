@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    environment:
+      - MASTER_KEY=${MASTER_KEY}
+      - DB_PATH=/data/db.sqlite
+      - HOST=${HOST}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

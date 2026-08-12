@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — crowdin-stats</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="bg-ink text-text font-sans antialiased">
+  <main class="max-w-2xl mx-auto px-6 py-16">
+    <a href="/" class="text-text-muted text-sm hover:text-text">&larr; crowdin-stats</a>
+
+    <h1 class="mt-6 text-2xl font-semibold">Privacy Policy</h1>
+    <p class="mt-2 text-text-muted text-sm">Last updated: 2026-08-12</p>
+
+    <div class="mt-8 space-y-8 text-sm leading-relaxed text-text-muted">
+      <section>
+        <h2 class="text-text font-medium mb-2">What we collect</h2>
+        <p>When you register a project via <code class="font-mono text-accent-mint">/setup</code>, we store:</p>
+        <ul class="list-disc list-inside mt-2 space-y-1.5">
+          <li>Your Crowdin Project ID, in plaintext.</li>
+          <li>Your Crowdin Personal Access Token, encrypted (see <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the technical detail).</li>
+          <li>A randomly generated <code class="font-mono text-accent-mint">public_id</code>, used in your badge URLs.</li>
+          <li>A timestamp of when the project was registered.</li>
+        </ul>
+        <p class="mt-2">We do not collect names, email addresses, or any account information — there is no account. If you email us to request revocation, we retain that email only as long as needed to process the request.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">What we log</h2>
+        <p>Request logs record method, path, status code, and duration only. They never record request or response bodies. The <code class="font-mono text-accent-mint">/setup</code> endpoint — the only code path where your plaintext token ever transits our server — is explicitly excluded from any logging that could capture it.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">Who can see your data</h2>
+        <p>No third-party subprocessors are involved in storing or processing your token — no cloud KMS, no managed database, no external cache provider. The entire data path is the operator's own EU-based virtual machine, plus Crowdin's own API, which you have already chosen to trust by using Crowdin.</p>
+        <p class="mt-2">The encryption key used to protect your token exists only in the server's runtime environment. It is never written to the database, included in backups, or logged — see <a class="text-accent-mint hover:underline" href="https://github.com/YOUR_ORG/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the full guarantee and its honest limits.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">How long we keep it</h2>
+        <p>Registered project data is kept until you request deletion by emailing <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a> with your badge URL, or until we remove it at our discretion (e.g. suspected abuse or a long-dead project). Cached SVG output is retained for at most 12 hours plus a short grace period, then either refreshed or swept by an hourly cleanup job.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">Your rights</h2>
+        <p>Because this service is self-hosted on an EU-based VM, EU/EEA users have rights under the GDPR, including access to and deletion of the data described above. To exercise them, email <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a> with your badge URL (the <code class="font-mono text-accent-mint">public_id</code> is enough to identify your row) — requests are handled manually, and there is no automated self-service deletion in the current version.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">Third parties</h2>
+        <p>The only external party in the data path is Crowdin's own API, used to fetch translation progress and top-contributor data for the one project you registered, using the token you provided. See <a class="text-accent-mint hover:underline" href="https://crowdin.com/privacy" target="_blank" rel="noopener">Crowdin's own privacy policy</a> for how they handle data on their end.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">Changes to this policy</h2>
+        <p>Material changes will be reflected in the "Last updated" date above.</p>
+      </section>
+
+      <section>
+        <h2 class="text-text font-medium mb-2">Contact</h2>
+        <p>Privacy questions or data requests: <a class="text-accent-mint hover:underline" href="mailto:revoke@yourdomain.eu">revoke@yourdomain.eu</a>.</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

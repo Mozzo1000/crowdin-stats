@@ -24,6 +24,10 @@ npx tailwindcss -i input.css -o static/app.css --minify
 export MASTER_KEY=$(openssl rand -base64 32)
 export DB_PATH=./data/db.sqlite
 go run ./cmd/crowdin-stats
+
+# add -no-cache to bypass the 12h badge cache entirely — every badge
+# request does a live Crowdin fetch, useful while testing
+go run ./cmd/crowdin-stats -no-cache
 ```
 
 ## Deployment

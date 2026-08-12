@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"flag"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 type server struct {
 	db        *sql.DB
 	masterKey [32]byte
+	noCache   bool
 }
 
 func main() {
@@ -24,6 +26,9 @@ func main() {
 		generateDemoSVGs()
 		return
 	}
+
+	noCache := flag.Bool("no-cache", false, "disable the 12h badge cache — every badge request does a live Crowdin fetch (for testing)")
+	flag.Parse()
 
 	masterKey, err := loadMasterKey()
 	if err != nil {
@@ -46,7 +51,10 @@ func main() {
 	stopCleanup := startCleanupTicker(db, func() int64 { return time.Now().Unix() })
 	defer stopCleanup()
 
-	s := &server{db: db, masterKey: masterKey}
+	s := &server{db: db, masterKey: masterKey, noCache: *noCache}
+	if s.noCache {
+		slog.Warn("caching disabled — every badge request will hit Crowdin live (-no-cache)")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", serveStaticFile("static/index.html"))
@@ -205,7 +213,7 @@ func (s *server) handleTableBadge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svg, err := getOrRefresh(r.Context(), s.db, "table:"+publicID, publicID, s.renderTable(p))
+	svg, err := getOrRefresh(r.Context(), s.db, "table:"+publicID, publicID, s.renderTable(p), s.noCache)
 	if err != nil {
 		s.handleBadgeError(w, err)
 		return
@@ -244,7 +252,7 @@ func (s *server) handleContributorsBadge(w http.ResponseWriter, r *http.Request)
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
 
 	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner))
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner), s.noCache)
 	if err != nil {
 		s.handleBadgeError(w, err)
 		return

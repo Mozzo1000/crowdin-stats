@@ -50,7 +50,18 @@ type fetchFunc func(ctx context.Context) (string, error)
 // ctx bounds only the blocking cold-cache fetch. Background refreshes run
 // detached from the triggering request's context (which is canceled the
 // moment that request's response is written) with their own timeout.
-func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, fetch fetchFunc) (string, error) {
+//
+// When disabled is true (the -no-cache flag), the cache table is never read
+// or written — every call does a live, rate-limited fetch, for testing
+// against real Crowdin data without waiting out the 12h TTL.
+func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, fetch fetchFunc, disabled bool) (string, error) {
+	if disabled {
+		if rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour) {
+			return "", errRateLimited
+		}
+		return fetch(ctx)
+	}
+
 	entry, found := getCache(db, key)
 	now := time.Now().Unix()
 

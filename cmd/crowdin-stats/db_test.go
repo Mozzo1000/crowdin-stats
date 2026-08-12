@@ -73,7 +73,7 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 		return "<svg>fresh</svg>", nil
 	}
 
-	svg, err := getOrRefresh(ctx, db, "k1", "rk1", fetch)
+	svg, err := getOrRefresh(ctx, db, "k1", "rk1", fetch, false)
 	if err != nil {
 		t.Fatalf("getOrRefresh cold: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 		t.Fatalf("expected 1 fetch on cold cache, got calls=%d svg=%s", calls, svg)
 	}
 
-	svg, err = getOrRefresh(ctx, db, "k1", "rk1", fetch)
+	svg, err = getOrRefresh(ctx, db, "k1", "rk1", fetch, false)
 	if err != nil {
 		t.Fatalf("getOrRefresh warm: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 		t.Fatalf("force stale: %v", err)
 	}
 
-	svg, err = getOrRefresh(ctx, db, "k1", "rk1", fetch)
+	svg, err = getOrRefresh(ctx, db, "k1", "rk1", fetch, false)
 	if err != nil {
 		t.Fatalf("getOrRefresh stale: %v", err)
 	}
@@ -105,5 +105,32 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	if calls != 2 {
 		t.Fatalf("expected background refresh to have run, calls=%d", calls)
+	}
+}
+
+func TestCacheDisabled(t *testing.T) {
+	db := newTestDB(t)
+	ctx := context.Background()
+
+	calls := 0
+	fetch := func(ctx context.Context) (string, error) {
+		calls++
+		return "<svg>fresh</svg>", nil
+	}
+
+	for i := 0; i < 3; i++ {
+		svg, err := getOrRefresh(ctx, db, "k1", "rk1", fetch, true)
+		if err != nil {
+			t.Fatalf("getOrRefresh disabled: %v", err)
+		}
+		if svg != "<svg>fresh</svg>" {
+			t.Fatalf("unexpected svg: %s", svg)
+		}
+	}
+	if calls != 3 {
+		t.Fatalf("expected every call to fetch live with caching disabled, got calls=%d", calls)
+	}
+	if _, found := getCache(db, "k1"); found {
+		t.Fatalf("expected cache table to stay untouched when disabled")
 	}
 }

@@ -12,7 +12,7 @@ go build ./...
 go test ./...
 
 # regenerate landing-page demo SVGs after changing render.go
-go run . gendemo
+go run ./cmd/crowdin-stats gendemo
 
 # rebuild compiled CSS after changing input.css or static/*.html
 npx tailwindcss -i input.css -o static/app.css --minify
@@ -23,7 +23,7 @@ npx tailwindcss -i input.css -o static/app.css --minify
 ```bash
 export MASTER_KEY=$(openssl rand -base64 32)
 export DB_PATH=./data/db.sqlite
-go run .
+go run ./cmd/crowdin-stats
 ```
 
 ## Deployment

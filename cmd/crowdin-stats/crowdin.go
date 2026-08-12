@@ -119,11 +119,10 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 	return out, nil
 }
 
-// flexibleInt decodes a JSON field that Crowdin's report export sometimes
-// emits as a quoted string and sometimes as a bare number (observed across
-// report formats/versions) — encoding/json's json.Number only accepts the
-// bare-number form and hard-fails on a quoted one, which was silently
-// breaking every contributors.svg render.
+// flexibleInt decodes a JSON field that Crowdin's report export emits as a
+// quoted string (observed on user.id, translated, and approved) rather than
+// a bare number — a plain int or json.Number field hard-fails on that quoted
+// form, which was silently breaking every contributors.svg render.
 type flexibleInt int64
 
 func (f *flexibleInt) UnmarshalJSON(b []byte) error {
@@ -146,10 +145,10 @@ func (f *flexibleInt) UnmarshalJSON(b []byte) error {
 // re-derived here from Crowdin's documented report output.
 type topMembersReportRow struct {
 	User struct {
-		ID        int    `json:"id"`
-		Username  string `json:"username"`
-		FullName  string `json:"fullName"`
-		AvatarURL string `json:"avatarUrl"`
+		ID        flexibleInt `json:"id"`
+		Username  string      `json:"username"`
+		FullName  string      `json:"fullName"`
+		AvatarURL string      `json:"avatarUrl"`
 	} `json:"user"`
 	Translated flexibleInt `json:"translated"`
 	Approved   flexibleInt `json:"approved"`

@@ -123,6 +123,8 @@ type setupRequest struct {
 }
 
 type setupResponse struct {
+	PublicID        string `json:"public_id"`
+	EmbedBaseURL    string `json:"embed_base_url"`
 	TableURL        string `json:"table_url"`
 	ContributorsURL string `json:"contributors_url"`
 	Markdown        string `json:"markdown"`
@@ -175,6 +177,8 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	tableURL := base + "/embed/" + publicID + "/table.svg"
 	contribURL := base + "/embed/" + publicID + "/contributors.svg?limit=30&unit=words"
 	resp := setupResponse{
+		PublicID:        publicID,
+		EmbedBaseURL:    base + "/embed/" + publicID,
 		TableURL:        tableURL,
 		ContributorsURL: contribURL,
 		Markdown:        "![Translation Progress](" + tableURL + ")\n![Contributors](" + contribURL + ")",

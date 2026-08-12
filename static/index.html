@@ -103,53 +103,78 @@
 
     <!-- Customization -->
     <section class="py-16 border-t border-border">
-      <h2 class="text-xl font-semibold mb-4">Customize your badges</h2>
-      <p class="text-text-muted mb-6">These are all just query string values on the URL — no re-onboarding required to change them.</p>
+      <h2 class="text-xl font-semibold mb-2">Build your own</h2>
+      <p class="text-text-muted mb-6">Pick a badge type, tweak the colors, and copy the URL. Everything here is just a query string — no re-onboarding required to change it later. This preview uses sample data; once you're set up, swap <code class="font-mono text-accent">&#123;public_id&#125;</code> for your real one.</p>
 
-      <h3 class="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">Contributor grid</h3>
-      <div class="panel p-4 font-mono text-xs text-accent break-all">
-        /embed/&#123;public_id&#125;/contributors.svg?limit=5&amp;unit=words&amp;hideOwner=true
-      </div>
-      <ul class="mt-4 text-text-muted text-sm space-y-1.5">
-        <li><code class="font-mono text-accent">limit</code> — how many contributors to show, 1–100 (default 30)</li>
-        <li><code class="font-mono text-accent">unit</code> — rank by <code class="font-mono">words</code>, <code class="font-mono">strings</code>, or <code class="font-mono">characters</code> (default words)</li>
-        <li><code class="font-mono text-accent">hideOwner</code> — set to <code class="font-mono">true</code> to exclude the project owner from the grid (default false)</li>
-      </ul>
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">limit=5</p>
-          <img src="/static/demo-contributors-limit5.svg" alt="Contributors grid at limit 5" class="max-w-full" />
+      <div class="badge-builder panel p-5">
+        <div class="flex gap-2 mb-5">
+          <button type="button" data-badge-type="table" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Translation progress</button>
+          <button type="button" data-badge-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
         </div>
-        <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">limit=10</p>
-          <img src="/static/demo-contributors.svg" alt="Contributors grid at limit 10" class="max-w-full" />
-        </div>
-      </div>
 
-      <h3 class="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3 mt-10">Colors</h3>
-      <p class="text-text-muted text-sm mb-4">Both <code class="font-mono text-accent">table.svg</code> and <code class="font-mono text-accent">contributors.svg</code> take the same five color params, so you can match either badge to a light README, a dark one, or your own brand.</p>
-      <div class="panel p-4 font-mono text-xs text-accent break-all">
-        /embed/&#123;public_id&#125;/table.svg?bg=ffffff&amp;text=1f2a33&amp;muted=64748b&amp;accent=2f6fed&amp;border=e2e8f0
-      </div>
-      <ul class="mt-4 text-text-muted text-sm space-y-1.5">
-        <li><code class="font-mono text-accent">bg</code> — card background</li>
-        <li><code class="font-mono text-accent">text</code> — primary text (language names)</li>
-        <li><code class="font-mono text-accent">muted</code> — secondary text (percentages, initials, empty-state messages)</li>
-        <li><code class="font-mono text-accent">accent</code> — progress bar fill</li>
-        <li><code class="font-mono text-accent">border</code> — bar track, avatar ring, and fallback avatar background</li>
-      </ul>
-      <p class="text-text-muted text-sm mt-3">Each is a 3- or 6-digit hex color, with or without a leading <code class="font-mono text-accent">#</code> (URL-encode it as <code class="font-mono text-accent">%23</code> if you include it). Anything invalid is quietly ignored in favor of the default, so a typo never breaks the badge.</p>
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">default</p>
-          <img src="/static/demo-table.svg" alt="Translation progress badge with default colors" class="max-w-full" />
+        <div data-builder-contrib-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
+          <div>
+            <label class="flex items-center justify-between text-sm font-medium mb-1.5">
+              <span>Limit</span>
+              <span data-builder-limit-value class="text-text-muted font-mono">30</span>
+            </label>
+            <input type="range" min="1" max="100" value="30" data-builder-limit class="w-full accent-accent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Unit</label>
+            <select data-builder-unit class="field-mono w-full">
+              <option value="words">words</option>
+              <option value="strings">strings</option>
+              <option value="characters">characters</option>
+            </select>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" data-builder-hideowner class="rounded border-border accent-accent" />
+            Hide project owner
+          </label>
         </div>
-        <div class="panel p-4">
-          <p class="text-text-muted text-xs font-mono mb-2">bg=ffffff&amp;text=1f2a33&amp;accent=2f6fed...</p>
-          <img src="/static/demo-table-custom-colors.svg" alt="Translation progress badge with a custom light color scheme" class="max-w-full" />
+
+        <div class="grid grid-cols-5 gap-2 mb-5 pb-5 border-b border-border">
+          <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+            bg
+            <input type="color" data-builder-color="bg" class="w-9 h-9 rounded cursor-pointer border border-border" />
+          </label>
+          <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+            text
+            <input type="color" data-builder-color="text" class="w-9 h-9 rounded cursor-pointer border border-border" />
+          </label>
+          <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+            muted
+            <input type="color" data-builder-color="muted" class="w-9 h-9 rounded cursor-pointer border border-border" />
+          </label>
+          <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+            accent
+            <input type="color" data-builder-color="accent" class="w-9 h-9 rounded cursor-pointer border border-border" />
+          </label>
+          <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+            border
+            <input type="color" data-builder-color="border" class="w-9 h-9 rounded cursor-pointer border border-border" />
+          </label>
+        </div>
+
+        <div class="mb-4 overflow-x-auto">
+          <div data-builder-preview></div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div data-builder-url class="flex-1 font-mono text-xs text-accent break-all bg-bg-subtle border border-border rounded-lg px-3 py-2"></div>
+          <button type="button" data-builder-copy class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>
         </div>
       </div>
     </section>
+
+    <script src="/static/badge-builder.js"></script>
+    <script>
+      CrowdinStatsBadgeBuilder.init(document.querySelector('.badge-builder'), {
+        mode: 'demo',
+        baseEmbedURL: '/embed/{public_id}',
+      });
+    </script>
 
     <!-- FAQ -->
     <section class="py-16 border-t border-border" id="faq">

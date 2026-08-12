@@ -132,6 +132,72 @@
       <p class="text-sm text-text-muted">
         Save this page or the URLs above — there's no login, so this is the only place you'll see them.
       </p>
+
+      <div>
+        <h2 class="text-lg font-semibold mb-1">Want a different look?</h2>
+        <p class="text-text-muted text-sm mb-4">Build a custom version of either badge below — this preview is your real project's live data, and the URL updates as you go.</p>
+
+        <div class="badge-builder panel p-5">
+          <div class="flex gap-2 mb-5">
+            <button type="button" data-badge-type="table" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Translation progress</button>
+            <button type="button" data-badge-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
+          </div>
+
+          <div data-builder-contrib-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
+            <div>
+              <label class="flex items-center justify-between text-sm font-medium mb-1.5">
+                <span>Limit</span>
+                <span data-builder-limit-value class="text-text-muted font-mono">30</span>
+              </label>
+              <input type="range" min="1" max="100" value="30" data-builder-limit class="w-full accent-accent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Unit</label>
+              <select data-builder-unit class="field-mono w-full">
+                <option value="words">words</option>
+                <option value="strings">strings</option>
+                <option value="characters">characters</option>
+              </select>
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" data-builder-hideowner class="rounded border-border accent-accent" />
+              Hide project owner
+            </label>
+          </div>
+
+          <div class="grid grid-cols-5 gap-2 mb-5 pb-5 border-b border-border">
+            <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+              bg
+              <input type="color" data-builder-color="bg" class="w-9 h-9 rounded cursor-pointer border border-border" />
+            </label>
+            <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+              text
+              <input type="color" data-builder-color="text" class="w-9 h-9 rounded cursor-pointer border border-border" />
+            </label>
+            <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+              muted
+              <input type="color" data-builder-color="muted" class="w-9 h-9 rounded cursor-pointer border border-border" />
+            </label>
+            <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+              accent
+              <input type="color" data-builder-color="accent" class="w-9 h-9 rounded cursor-pointer border border-border" />
+            </label>
+            <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
+              border
+              <input type="color" data-builder-color="border" class="w-9 h-9 rounded cursor-pointer border border-border" />
+            </label>
+          </div>
+
+          <div class="mb-4 overflow-x-auto">
+            <img data-builder-preview-img class="max-w-full" alt="Live badge preview with your chosen settings" />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div data-builder-url class="flex-1 font-mono text-xs text-accent break-all bg-bg-subtle border border-border rounded-lg px-3 py-2"></div>
+            <button type="button" data-builder-copy class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="panel p-4 mt-8 text-xs text-text-muted leading-relaxed">
@@ -146,6 +212,7 @@
     </p>
   </main>
 
+  <script src="/static/badge-builder.js"></script>
   <script>
     document.getElementById('theme-toggle').addEventListener('click', function () {
       var isDark = document.documentElement.classList.toggle('dark');
@@ -221,6 +288,11 @@
       document.getElementById('markdown-output').textContent = data.markdown;
       document.getElementById('preview-img').src = data.table_url;
       results.classList.remove('hidden');
+
+      CrowdinStatsBadgeBuilder.init(document.querySelector('.badge-builder'), {
+        mode: 'live',
+        baseEmbedURL: data.embed_base_url,
+      });
 
       function showError(message) {
         errorMsg.textContent = message;

@@ -34,22 +34,78 @@
     font-display: swap;
   }
 
+  :root {
+    /* Light mode — echoes crowdin.com's ink-on-white palette (charcoal
+       text, saturated blue accent) without reusing its exact hexes. */
+    --bg: #ffffff;
+    --bg-subtle: #f6f8fb;
+    --surface: #ffffff;
+    --text: #1f2a33;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #2f6fed;
+    --accent-hover: #2558c6;
+    --accent-contrast: #ffffff;
+    --accent-soft: #eaf1ff;
+    --success: #17a673;
+    --success-soft: #e6f7f1;
+  }
+
+  :root.dark {
+    --bg: #12161d;
+    --bg-subtle: #171c24;
+    --surface: #1b212b;
+    --text: #edeff3;
+    --text-muted: #97a2b4;
+    --border: #2b3340;
+    --accent: #5b8dff;
+    --accent-hover: #7ba3ff;
+    --accent-contrast: #0b0e14;
+    --accent-soft: rgba(91, 141, 255, 0.14);
+    --success: #34d399;
+    --success-soft: rgba(52, 211, 153, 0.14);
+  }
+
   body {
-    background-color: #0b0e14;
-    color: #e8eaed;
+    background-color: var(--bg);
+    color: var(--text);
   }
 }
 
 @layer components {
   .panel {
-    @apply bg-surface border border-border rounded-lg;
+    @apply bg-surface border border-border rounded-xl;
   }
 
   .btn-primary {
-    @apply bg-accent-amber text-ink font-semibold rounded-md px-5 py-2.5 transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-accent text-accent-contrast font-semibold rounded-lg px-5 py-2.5 transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply border border-border text-text font-semibold rounded-lg px-5 py-2.5 transition-colors hover:bg-bg-subtle;
   }
 
   .field-mono {
-    @apply font-mono text-sm bg-ink border border-border rounded-md px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent-mint;
+    @apply font-mono text-sm bg-bg-subtle border border-border rounded-lg px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent;
+  }
+
+  .nav-link {
+    @apply text-text-muted hover:text-text transition-colors text-sm font-medium;
+  }
+
+  /* Collapsible FAQ entries: a plain <details>/<summary> pair so content
+     stays in the DOM (findable with Ctrl-F / browser find) even while
+     visually collapsed, unlike a JS-driven accordion. */
+  .faq-item summary {
+    @apply cursor-pointer list-none flex items-center justify-between gap-4 py-4 font-medium text-text;
+  }
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-item .chevron {
+    @apply shrink-0 transition-transform text-text-muted;
+  }
+  .faq-item[open] .chevron {
+    transform: rotate(180deg);
   }
 }

@@ -2,17 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Set up your badges — crowdin-stats</title>
   <meta name="referrer" content="no-referrer" />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="bg-ink text-text font-sans antialiased">
+<body class="bg-bg text-text font-sans antialiased">
 
-  <main class="max-w-lg mx-auto px-6 py-16">
-    <a href="/" class="text-text-muted text-sm hover:text-text">&larr; crowdin-stats</a>
+  <header class="border-b border-border">
+    <nav class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <a href="/" class="flex items-center gap-2 font-semibold text-text shrink-0">
+        <span class="w-7 h-7 rounded-md bg-accent flex items-center justify-center shrink-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11M14 3l4 4-4 4"/><path d="M17 17H6M10 21l-4-4 4-4"/></svg>
+        </span>
+        crowdin-stats
+      </a>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="https://github.com/mozzo1000/crowdin-stats" class="nav-link hidden sm:inline-flex" target="_blank" rel="noopener">GitHub</a>
+        <button id="theme-toggle" type="button" aria-label="Toggle dark mode" class="w-9 h-9 grid place-items-center rounded-lg border border-border text-text-muted hover:text-text hover:bg-bg-subtle transition-colors">
+          <svg class="block dark:hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="hidden dark:block" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+        </button>
+      </div>
+    </nav>
+  </header>
 
-    <h1 class="mt-6 text-2xl font-semibold">Set up your badges</h1>
+  <main class="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <h1 class="text-2xl font-semibold">Set up your badges</h1>
     <p class="mt-2 text-text-muted text-sm">
       Takes under a minute. No account, no login — the badge URLs you get back are the only thing that identifies your project.
     </p>
@@ -23,7 +48,7 @@
         <span>
           Create a Personal Access Token in Crowdin with <strong class="text-text">Granular Access</strong>, scoped to
           <strong class="text-text">this one project only</strong>.
-          <a class="text-accent-mint hover:underline" href="https://crowdin.com/settings#api-key" target="_blank" rel="noopener">Create a token on Crowdin &rarr;</a>
+          <a class="text-accent hover:underline" href="https://crowdin.com/settings#api-key" target="_blank" rel="noopener">Create a token on Crowdin &rarr;</a>
         </span>
       </p>
 
@@ -40,15 +65,15 @@
           <tbody class="text-text">
             <tr class="border-b border-border">
               <td class="py-2 px-1">Projects</td>
-              <td class="py-2 px-1 text-accent-mint">Read only</td>
+              <td class="py-2 px-1 text-accent">Read only</td>
             </tr>
             <tr class="border-b border-border">
               <td class="py-2 px-1">Translation status</td>
-              <td class="py-2 px-1 text-accent-mint">Read only</td>
+              <td class="py-2 px-1 text-accent">Read only</td>
             </tr>
             <tr>
               <td class="py-2 px-1">Reports</td>
-              <td class="py-2 px-1 text-accent-amber">Read and Write</td>
+              <td class="py-2 px-1 text-accent">Read and Write</td>
             </tr>
           </tbody>
         </table>
@@ -89,14 +114,14 @@
 
       <button type="submit" id="submit-btn" class="btn-primary w-full">Generate badges</button>
 
-      <p id="error-msg" class="hidden text-sm text-red-400"></p>
+      <p id="error-msg" class="hidden text-sm text-red-600 dark:text-red-400"></p>
     </form>
 
     <div id="results" class="hidden mt-8 space-y-5">
       <div class="panel p-4">
         <p class="text-xs text-text-muted mb-2 font-mono">markdown</p>
         <pre id="markdown-output" class="field-mono w-full whitespace-pre-wrap break-all"></pre>
-        <button id="copy-btn" type="button" class="mt-3 text-sm text-accent-mint hover:underline">Copy to clipboard</button>
+        <button id="copy-btn" type="button" class="mt-3 text-sm text-accent hover:underline">Copy to clipboard</button>
       </div>
 
       <div class="panel p-4">
@@ -112,16 +137,21 @@
     <div class="panel p-4 mt-8 text-xs text-text-muted leading-relaxed">
       <strong class="text-text">Revocation:</strong> delete the Personal Access Token in your Crowdin account —
       this immediately stops the service from accessing your project. To also remove your data from our database,
-      email <a class="text-accent-mint hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL.
+      email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your badge URL.
     </div>
 
     <p class="mt-6 text-xs text-text-muted">
-      By continuing you agree to the <a class="text-accent-mint hover:underline" href="/terms">Terms of Service</a>
-      and <a class="text-accent-mint hover:underline" href="/privacy">Privacy Policy</a>.
+      By continuing you agree to the <a class="text-accent hover:underline" href="/terms">Terms of Service</a>
+      and <a class="text-accent hover:underline" href="/privacy">Privacy Policy</a>.
     </p>
   </main>
 
   <script>
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      var isDark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
+    });
+
     const form = document.getElementById('setup-form');
     const submitBtn = document.getElementById('submit-btn');
     const errorMsg = document.getElementById('error-msg');

@@ -73,24 +73,20 @@ const (
 	ProgressApproval    ProgressType = "approval"
 )
 
-// prepareTableLanguages applies table.svg's three filters, in order:
+// prepareTableLanguages applies table.svg's filters, in order:
 //  1. progressType — swap each language's rendered Percent to its approval
 //     figure, so sorting/filtering/rendering downstream all agree on which
 //     number is "the" percent.
 //  2. pinned — languages named in the `languages` query param (matched
-//     case-insensitively against either LanguageID or LanguageName) are
-//     always kept, bypassing both minPercent and limit below. This is what
-//     lets a maintainer pin a specific target language into the table even
-//     if it's low-progress or would otherwise fall outside the top N.
-//     Pinned languages are additive: they don't count against `limit`, so
-//     pinning a language always grows the table rather than bumping
-//     something else out of it.
-//  3. minPercent / limit — applied only to the non-pinned remainder: drop
+//     case-insensitively against either LanguageID or LanguageName). When
+//     `languages` is set, it's exclusive: the table shows only the matched
+//     languages, in whatever progress state they're in, and minPercent/limit
+//     are ignored entirely. This is what lets a maintainer hand-pick exactly
+//     which languages appear instead of letting the top-N/min-percent
+//     filters decide.
+//  3. minPercent / limit — applied only when no languages are pinned: drop
 //     anything below minPercent, sort by percent descending, then keep only
 //     the top `limit` (0 = unlimited).
-//
-// renderTableSVG re-sorts its input anyway, so the pinned+kept slices don't
-// need to be merged in any particular order here.
 func prepareTableLanguages(languages []LanguageProgress, progressType ProgressType, minPercent, limit int, pinned map[string]bool) []LanguageProgress {
 	prepared := make([]LanguageProgress, len(languages))
 	copy(prepared, languages)
@@ -100,12 +96,18 @@ func prepareTableLanguages(languages []LanguageProgress, progressType ProgressTy
 		}
 	}
 
-	var pinnedOut, rest []LanguageProgress
-	for _, lang := range prepared {
-		if len(pinned) > 0 && (pinned[strings.ToLower(lang.LanguageID)] || pinned[strings.ToLower(lang.LanguageName)]) {
-			pinnedOut = append(pinnedOut, lang)
-			continue
+	if len(pinned) > 0 {
+		var pinnedOut []LanguageProgress
+		for _, lang := range prepared {
+			if pinned[strings.ToLower(lang.LanguageID)] || pinned[strings.ToLower(lang.LanguageName)] {
+				pinnedOut = append(pinnedOut, lang)
+			}
 		}
+		return pinnedOut
+	}
+
+	var rest []LanguageProgress
+	for _, lang := range prepared {
 		if lang.Percent >= minPercent {
 			rest = append(rest, lang)
 		}
@@ -121,7 +123,7 @@ func prepareTableLanguages(languages []LanguageProgress, progressType ProgressTy
 		rest = rest[:limit]
 	}
 
-	return append(pinnedOut, rest...)
+	return rest
 }
 
 // parseLanguagePins splits the `languages` query param (comma-separated

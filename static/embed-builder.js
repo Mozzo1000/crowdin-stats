@@ -78,8 +78,8 @@
   }
 
   // prepareTableLanguages, ported from render.go — swaps in approval %
-  // when requested, then pins + filters/sorts/truncates the remainder.
-  // Pinned languages are additive: they don't count against `limit`.
+  // when requested, then either restricts to the pinned languages
+  // exclusively, or filters/sorts/truncates by minPercent/limit.
   function prepareTableLanguages(languages, progress, minPercent, limit, pinned) {
     var prepared = languages.map(function (lang) {
       var copy = Object.assign({}, lang);
@@ -87,24 +87,25 @@
       return copy;
     });
 
-    var pinnedOut = [], rest = [];
-    prepared.forEach(function (lang) {
-      var id = (lang.id || '').toLowerCase();
-      var name = (lang.name || '').toLowerCase();
-      if (pinned[id] || pinned[name]) {
-        pinnedOut.push(lang);
-      } else if (lang.percent >= minPercent) {
-        rest.push(lang);
-      }
-    });
+    var hasPins = Object.keys(pinned).length > 0;
+    if (hasPins) {
+      return prepared.filter(function (lang) {
+        var id = (lang.id || '').toLowerCase();
+        var name = (lang.name || '').toLowerCase();
+        return pinned[id] || pinned[name];
+      });
+    }
 
+    var rest = prepared.filter(function (lang) {
+      return lang.percent >= minPercent;
+    });
     rest.sort(function (a, b) {
       if (a.percent !== b.percent) return b.percent - a.percent;
       return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
     });
     if (limit > 0 && rest.length > limit) rest = rest.slice(0, limit);
 
-    return pinnedOut.concat(rest);
+    return rest;
   }
 
   function renderTableSVG(languages, colors) {

@@ -173,7 +173,7 @@ func TestPrepareTableLanguagesLimitAndMinPercent(t *testing.T) {
 	}
 }
 
-func TestPrepareTableLanguagesPinnedBypassesFilters(t *testing.T) {
+func TestPrepareTableLanguagesPinnedIsExclusive(t *testing.T) {
 	langs := []LanguageProgress{
 		{LanguageName: "French", LanguageID: "fr", Percent: 90},
 		{LanguageName: "German", LanguageID: "de", Percent: 80},
@@ -182,15 +182,8 @@ func TestPrepareTableLanguagesPinnedBypassesFilters(t *testing.T) {
 	pinned := parseLanguagePins("ko")
 	out := prepareTableLanguages(langs, ProgressTranslation, 50, 1, pinned)
 
-	names := map[string]bool{}
-	for _, l := range out {
-		names[l.LanguageName] = true
-	}
-	if !names["Korean"] {
-		t.Fatalf("expected pinned Korean to survive minPercent+limit filtering, got: %+v", out)
-	}
-	if len(out) != 2 { // 1 pinned + top-1 of the rest
-		t.Fatalf("expected pinned + limit=1 of the rest (2 total), got %d: %+v", len(out), out)
+	if len(out) != 1 || out[0].LanguageName != "Korean" {
+		t.Fatalf("expected only the pinned Korean, ignoring minPercent/limit, got: %+v", out)
 	}
 }
 

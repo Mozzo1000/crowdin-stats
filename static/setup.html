@@ -80,14 +80,6 @@
           </tbody>
         </table>
       </div>
-
-      <p class="mt-4 text-xs">
-        <strong class="text-text">Why does Reports need Write access?</strong> Generating the contributor report is
-        technically a write-style API call in Crowdin's permission model, even though it only reads translation
-        activity — it doesn't create or change anything in your project. We don't use the
-        <strong class="text-text">Members</strong> scope at all: it lists who has project access, not how much
-        each person has translated, which is what the contributor grid is ranked by.
-      </p>
     </div>
 
     <form id="setup-form" class="mt-8 max-w-xl mx-auto space-y-5" autocomplete="off">
@@ -161,10 +153,6 @@
           <button type="button" data-copy-target="markdown-overall-circle" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
         </div>
       </div>
-
-      <p class="text-sm text-text-muted max-w-xl mx-auto">
-        Save this page or the URLs above — there's no login, so this is the only place you'll see them.
-      </p>
 
       <div class="max-w-2xl mx-auto">
         <h2 class="text-lg font-semibold mb-1">Want a different look?</h2>

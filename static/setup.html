@@ -36,13 +36,15 @@
     </nav>
   </header>
 
-  <main class="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16">
-    <h1 class="text-2xl font-semibold">Generate your images</h1>
-    <p class="mt-2 text-text-muted text-sm">
-      Takes under a minute. No account, no login — the embed URLs you get back are the only thing that identifies your project.
-    </p>
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <div class="max-w-xl mx-auto">
+      <h1 class="text-2xl font-semibold">Generate your images</h1>
+      <p class="mt-2 text-text-muted text-sm">
+        Takes under a minute. No account, no login — the embed URLs you get back are the only thing that identifies your project.
+      </p>
+    </div>
 
-    <div class="panel p-5 mt-8 text-sm text-text-muted leading-relaxed">
+    <div id="pat-instructions" class="panel p-5 mt-8 max-w-xl mx-auto text-sm text-text-muted leading-relaxed">
       <p class="flex gap-2">
         <svg class="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
         <span>
@@ -88,16 +90,7 @@
       </p>
     </div>
 
-    <form id="setup-form" class="mt-8 space-y-5" autocomplete="off">
-      <div>
-        <label for="project-id" class="block text-sm font-medium mb-1.5">Crowdin Project ID</label>
-        <input id="project-id" name="crowdin_project_id" type="text" inputmode="numeric" required
-               class="field-mono w-full" placeholder="123456" autocomplete="off" />
-        <p class="mt-1.5 text-xs text-text-muted">
-          The numeric project ID, not the URL slug — find it in your project under <strong class="text-text">Tools → API</strong>.
-        </p>
-      </div>
-
+    <form id="setup-form" class="mt-8 max-w-xl mx-auto space-y-5" autocomplete="off">
       <div>
         <label for="token" class="block text-sm font-medium mb-1.5">Personal Access Token</label>
         <div class="relative">
@@ -112,33 +105,70 @@
         </div>
       </div>
 
-      <button type="submit" id="submit-btn" class="btn-primary w-full">Generate images</button>
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label for="project-id" class="block text-sm font-medium">Crowdin project</label>
+          <button type="button" id="manual-project-toggle" class="text-xs text-accent hover:underline">Enter ID manually</button>
+        </div>
+        <select id="project-id" name="crowdin_project_id" required class="field-mono w-full" disabled>
+          <option value="" selected>Enter your token above first&hellip;</option>
+        </select>
+        <input id="project-id-manual" type="text" inputmode="numeric" disabled
+               class="field-mono w-full hidden" placeholder="123456" autocomplete="off" />
+        <p id="project-id-status" class="mt-1.5 text-xs text-text-muted"></p>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary w-full" disabled>Generate images</button>
 
       <p id="error-msg" class="hidden text-sm text-red-600 dark:text-red-400"></p>
     </form>
 
-    <div id="results" class="hidden mt-8 space-y-5">
-      <div class="panel p-4">
-        <p class="text-xs text-text-muted mb-2 font-mono">markdown</p>
-        <pre id="markdown-output" class="field-mono w-full whitespace-pre-wrap break-all"></pre>
-        <button id="copy-btn" type="button" class="mt-3 text-sm text-accent hover:underline">Copy to clipboard</button>
-      </div>
+    <div id="results" class="hidden mt-10 space-y-8">
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="panel p-4 flex flex-col">
+          <p class="text-xs text-text-muted mb-3 font-mono">translation progress</p>
+          <div class="overflow-x-auto mb-3">
+            <img id="preview-table-img" class="max-w-full" alt="Live translation progress preview" />
+          </div>
+          <pre id="markdown-table" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
+          <button type="button" data-copy-target="markdown-table" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
+        </div>
 
-      <div class="panel p-4">
-        <p class="text-xs text-text-muted mb-2 font-mono">preview</p>
-        <div class="space-y-4 overflow-x-auto">
-          <img id="preview-img" class="max-w-full" alt="Live translation progress preview" />
-          <img id="preview-overall-img" class="max-w-full" alt="Live overall progress preview" />
+        <div class="panel p-4 flex flex-col">
+          <p class="text-xs text-text-muted mb-3 font-mono">contributors</p>
+          <div class="overflow-x-auto mb-3">
+            <img id="preview-contrib-img" class="max-w-full" alt="Live contributors preview" />
+          </div>
+          <pre id="markdown-contrib" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
+          <button type="button" data-copy-target="markdown-contrib" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
+        </div>
+
+        <div class="panel p-4 flex flex-col">
+          <p class="text-xs text-text-muted mb-3 font-mono">overall — card</p>
+          <div class="overflow-x-auto mb-3">
+            <img id="preview-overall-img" class="max-w-full" alt="Live overall progress preview (card)" />
+          </div>
+          <pre id="markdown-overall" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
+          <button type="button" data-copy-target="markdown-overall" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
+        </div>
+
+        <div class="panel p-4 flex flex-col">
+          <p class="text-xs text-text-muted mb-3 font-mono">overall — circle</p>
+          <div class="overflow-x-auto mb-3">
+            <img id="preview-overall-circle-img" class="max-w-full" alt="Live overall progress preview (circle)" />
+          </div>
+          <pre id="markdown-overall-circle" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
+          <button type="button" data-copy-target="markdown-overall-circle" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
         </div>
       </div>
 
-      <p class="text-sm text-text-muted">
+      <p class="text-sm text-text-muted max-w-xl mx-auto">
         Save this page or the URLs above — there's no login, so this is the only place you'll see them.
       </p>
 
-      <div>
+      <div class="max-w-2xl mx-auto">
         <h2 class="text-lg font-semibold mb-1">Want a different look?</h2>
-        <p class="text-text-muted text-sm mb-4">Build a custom version of either image below — this preview is your real project's live data, and the URL updates as you go.</p>
+        <p class="text-text-muted text-sm mb-4">Build a custom version of any image below — this preview is your real project's live data, and the URL updates as you go.</p>
 
         <div class="embed-builder panel p-5">
           <div class="flex gap-2 mb-5">
@@ -258,13 +288,13 @@
       </div>
     </div>
 
-    <div class="panel p-4 mt-8 text-xs text-text-muted leading-relaxed">
+    <div class="panel p-4 mt-8 max-w-xl mx-auto text-xs text-text-muted leading-relaxed">
       <strong class="text-text">Revocation:</strong> delete the Personal Access Token in your Crowdin account —
       this immediately stops the service from accessing your project. To also remove your data from our database,
       email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your embed URL.
     </div>
 
-    <p class="mt-6 text-xs text-text-muted">
+    <p class="mt-6 max-w-xl mx-auto text-xs text-text-muted">
       By continuing you agree to the <a class="text-accent hover:underline" href="/terms">Terms of Service</a>
       and <a class="text-accent hover:underline" href="/privacy">Privacy Policy</a>.
     </p>
@@ -284,6 +314,136 @@
     const tokenInput = document.getElementById('token');
     const toggleBtn = document.getElementById('toggle-token');
     const eyeIcon = document.getElementById('eye-icon');
+    const projectSelect = document.getElementById('project-id');
+    const projectStatus = document.getElementById('project-id-status');
+    const manualToggle = document.getElementById('manual-project-toggle');
+    const manualInput = document.getElementById('project-id-manual');
+    const patInstructions = document.getElementById('pat-instructions');
+
+    // Debounce project lookups so we're not hitting the Crowdin API on
+    // every keystroke while the user is still typing/pasting their token.
+    const PROJECT_LOOKUP_DEBOUNCE_MS = 600;
+    let projectLookupTimer = null;
+    let projectLookupToken = 0; // guards against a stale response clobbering a newer one
+    let projectMode = 'picker'; // 'picker' | 'manual'
+
+    // Some project-scoped Granular Access tokens are allowed to fetch a
+    // single project (GET /projects/{id}, used at final submit) but are
+    // rejected by the list endpoint used here. Rather than block onboarding
+    // on that, manual entry is always one click away and becomes the
+    // automatic fallback when the picker lookup fails.
+    function setManualMode(on, statusText) {
+      projectMode = on ? 'manual' : 'picker';
+      manualInput.classList.toggle('hidden', !on);
+      manualInput.disabled = !on;
+      projectSelect.classList.toggle('hidden', on);
+      projectSelect.disabled = on || projectSelect.options.length <= 1;
+      manualToggle.textContent = on ? 'Use project picker instead' : 'Enter ID manually';
+      if (statusText !== undefined) {
+        projectStatus.textContent = statusText;
+        projectStatus.classList.remove('text-red-600', 'dark:text-red-400');
+      }
+      updateSubmitEnabled();
+    }
+
+    manualToggle.addEventListener('click', () => setManualMode(projectMode !== 'manual'));
+    manualInput.addEventListener('input', updateSubmitEnabled);
+
+    function setProjectOptions(options, placeholder) {
+      projectSelect.innerHTML = '';
+      const placeholderOpt = document.createElement('option');
+      placeholderOpt.value = '';
+      placeholderOpt.textContent = placeholder;
+      placeholderOpt.disabled = options.length > 0;
+      placeholderOpt.selected = options.length === 0;
+      projectSelect.appendChild(placeholderOpt);
+      options.forEach((opt, i) => {
+        const el = document.createElement('option');
+        el.value = String(opt.id);
+        el.textContent = opt.name + ' (' + opt.id + ')';
+        el.selected = i === 0; // auto-select the first project so a single-project token needs no extra click
+        projectSelect.appendChild(el);
+      });
+      projectSelect.disabled = options.length === 0;
+      updateSubmitEnabled();
+    }
+
+    function updateSubmitEnabled() {
+      const value = projectMode === 'manual' ? manualInput.value.trim() : projectSelect.value;
+      submitBtn.disabled = !value;
+    }
+
+    function resetProjectPicker(placeholder) {
+      setProjectOptions([], placeholder);
+    }
+
+    async function loadProjects(token) {
+      const myLookup = ++projectLookupToken;
+      projectStatus.textContent = 'Loading your projects…';
+      projectStatus.classList.remove('text-red-600', 'dark:text-red-400');
+
+      let res;
+      try {
+        res = await fetch('/setup/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+      } catch (err) {
+        if (myLookup !== projectLookupToken) return;
+        resetProjectPicker('Could not load projects');
+        setManualMode(true, 'Could not reach the server to load projects — enter the project ID manually.');
+        return;
+      }
+
+      if (myLookup !== projectLookupToken) return; // token changed again while this was in flight
+
+      if (!res.ok) {
+        const text = (await res.text().catch(() => '')) || 'Could not load projects for this token.';
+        resetProjectPicker('Could not load projects');
+        setManualMode(true, text + ' — enter the project ID manually.');
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        resetProjectPicker('Could not load projects');
+        setManualMode(true, 'The server sent back a response we could not understand — enter the project ID manually.');
+        return;
+      }
+
+      const projects = data.projects || [];
+      if (projects.length === 0) {
+        resetProjectPicker('No projects found for this token');
+        setManualMode(true, 'This token has no accessible projects — enter the project ID manually.');
+        return;
+      }
+
+      setManualMode(false, 'Select the project this token was scoped to.');
+      setProjectOptions(projects, 'Select a project…');
+    }
+
+    tokenInput.addEventListener('input', () => {
+      const token = tokenInput.value.trim();
+      projectLookupToken++; // invalidate any in-flight/pending lookup for the previous value
+      clearTimeout(projectLookupTimer);
+      manualInput.value = '';
+      setManualMode(false);
+
+      if (!token) {
+        resetProjectPicker('Enter your token above first…');
+        projectStatus.textContent = '';
+        return;
+      }
+
+      resetProjectPicker('Waiting for you to finish typing…');
+      projectStatus.textContent = '';
+      projectLookupTimer = setTimeout(() => loadProjects(token), PROJECT_LOOKUP_DEBOUNCE_MS);
+    });
+
+    projectSelect.addEventListener('change', updateSubmitEnabled);
 
     toggleBtn.addEventListener('click', () => {
       const showing = tokenInput.type === 'text';
@@ -301,7 +461,7 @@
       submitBtn.textContent = 'Verifying...';
 
       const body = {
-        crowdin_project_id: document.getElementById('project-id').value.trim(),
+        crowdin_project_id: (projectMode === 'manual' ? manualInput.value : projectSelect.value).trim(),
         token: tokenInput.value.trim(),
       };
 
@@ -342,10 +502,18 @@
 
       form.reset();
       form.classList.add('hidden');
+      patInstructions.classList.add('hidden');
 
-      document.getElementById('markdown-output').textContent = data.markdown;
-      document.getElementById('preview-img').src = data.table_url;
+      const overallCircleURL = data.overall_url + '&variant=circle';
+
+      document.getElementById('preview-table-img').src = data.table_url;
+      document.getElementById('markdown-table').textContent = `![Translation Progress](${data.table_url})`;
+      document.getElementById('preview-contrib-img').src = data.contributors_url;
+      document.getElementById('markdown-contrib').textContent = `![Contributors](${data.contributors_url})`;
       document.getElementById('preview-overall-img').src = data.overall_url;
+      document.getElementById('markdown-overall').textContent = `![Overall](${data.overall_url})`;
+      document.getElementById('preview-overall-circle-img').src = overallCircleURL;
+      document.getElementById('markdown-overall-circle').textContent = `![Overall](${overallCircleURL})`;
       results.classList.remove('hidden');
 
       CrowdinStatsEmbedBuilder.init(document.querySelector('.embed-builder'), {
@@ -361,9 +529,14 @@
       }
     });
 
-    document.getElementById('copy-btn').addEventListener('click', () => {
-      const text = document.getElementById('markdown-output').textContent;
-      navigator.clipboard.writeText(text);
+    document.querySelectorAll('.copy-md-btn').forEach((btn) => {
+      const original = btn.textContent;
+      btn.addEventListener('click', () => {
+        const text = document.getElementById(btn.dataset.copyTarget).textContent;
+        navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      });
     });
   </script>
 </body>

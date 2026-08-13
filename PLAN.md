@@ -35,6 +35,7 @@ Design priorities, in order:
                          │  │ GET  /setup (HTML page) │  │
                          │  │ POST /setup (onboard)   │  │
                          │  │ GET  /embed/:id/table   │  │
+                         │  │ GET  /embed/:id/overall │  │
                          │  │ GET  /embed/:id/contrib │  │
                          │  └────────────────────────┘  │
                          │  in-memory/SQLite rate limiter│
@@ -311,7 +312,8 @@ Onboarding endpoint.
 {
   "table_url": "https://embeds.example.eu/embed/{public_id}/table.svg",
   "contributors_url": "https://embeds.example.eu/embed/{public_id}/contributors.svg?limit=30&unit=words",
-  "markdown": "![Translation Progress](...)\n![Contributors](...)"
+  "overall_url": "https://embeds.example.eu/embed/{public_id}/overall.svg?unit=words&metric=both",
+  "markdown": "![Translation Progress](...)\n![Overall](...)\n![Contributors](...)"
 }
 ```
 
@@ -345,6 +347,42 @@ cached SVG. Same fresh/stale/cold-cache behavior as `table.svg`.
 or very small projects), `renderContributorsSVG` must return a small,
 explicit "no contributors yet" SVG rather than an empty/zero-height image —
 an empty `<svg>` renders as a confusing blank gap in a README.
+
+### `GET /embed/{public_id}/overall.svg?unit=words&metric=both&variant=card`
+Renders a single project-wide translation summary — not broken down per
+language — for places a full `table.svg` is too much detail (e.g. a compact
+badge next to a heading).
+
+**Query parameters:**
+- `unit` — one of `words | strings`, default `words`. Unlike
+  `contributors.svg`'s `unit`, there is no `characters` option: this
+  endpoint aggregates the same per-language progress data `table.svg`
+  already fetches (`TranslationStatus.GetProjectProgress`, which reports
+  words and phrases/strings only), rather than issuing a second Crowdin API
+  call. An unrecognized value (including `characters`) falls back to
+  `words`.
+- `metric` — one of `percentage | fraction | both`, default `both`. Only
+  applies to `variant=card`; ignored (no-op, not an error) when
+  `variant=circle`.
+- `variant` — one of `card | circle`, default `card`. `card` is a wide
+  layout (label, big percentage, fraction subtitle, thin progress bar).
+  `circle` is a compact 120x120 progress ring for inline use, always showing
+  percentage only — a done/total fraction was tried at that size and dropped
+  as illegible.
+
+**Cache key:**
+```
+overall:{public_id}:unit={unit}:metric={metric}:variant={variant}
+```
+For `variant=circle`, `metric` is normalized to a fixed placeholder
+(`metric=n/a`) before building the key, so `?variant=circle&metric=percentage`
+and `?variant=circle&metric=fraction` share one cache entry instead of
+caching visually-identical images separately. Same fresh/stale/cold-cache
+behavior as `table.svg`.
+
+**Empty state:** if the aggregated total is zero (brand-new project, or a
+unit with no data), both variants render an explicit "no translation data
+yet" / "no data" SVG rather than a 0%-filled or blank image.
 
 ### `GET /healthz`
 Plain liveness check — returns `200 OK` with no body if the process is up
@@ -665,7 +703,7 @@ injection on the one page that handles a secret.
   UPDATE projects SET revoked = 1 WHERE public_id = 'xxxx';
   -- or, for full deletion:
   DELETE FROM projects WHERE public_id = 'xxxx';
-  DELETE FROM cache WHERE key LIKE 'table:xxxx%' OR key LIKE 'contrib:xxxx%';
+  DELETE FROM cache WHERE key LIKE 'table:xxxx%' OR key LIKE 'contrib:xxxx%' OR key LIKE 'overall:xxxx%';
   ```
 - Both embed handlers must check `revoked = 0` in their project lookup query,
   so a revoked project 404s immediately rather than serving stale cache.
@@ -688,6 +726,19 @@ Both renderers are pure functions: `[]LanguageProgress → string` and
 `[]Member → string`. No dependency on request/response objects, easy to unit
 test independently of HTTP handling.
 
+### `overall.svg`
+Two layouts sharing one aggregation step (`aggregateOverallProgress`, which
+sums `[]LanguageProgress` word/phrase totals for the selected `unit` into a
+single total/translated/percent figure, so the two variants never disagree
+on the underlying numbers):
+- **`card`** (`renderOverallCardSVG`) — label, big percentage and/or
+  done/total fraction (per `metric`), thin progress bar underneath.
+- **`circle`** (`renderOverallCircleSVG`) — compact 120x120 progress ring
+  (`stroke-dasharray` proportional to percent), percentage only.
+
+Both reuse `embedColors` and `clampPercent`/`emptyStateSVG` from the other
+two renderers rather than introducing new visual tokens.
+
 ---
 
 ## 12. Project structure
@@ -708,6 +759,8 @@ crowdin-stats/
 │   ├── app.css                            # compiled Tailwind output (§9.4)
 │   ├── demo-table.svg                       # hardcoded landing page example (§9.2)
 │   ├── demo-contributors.svg                 # hardcoded landing page example (§9.2)
+│   ├── demo-overall.svg                       # hardcoded landing page example (§9.2)
+│   ├── demo-overall-circle.svg                  # hardcoded landing page example (§9.2)
 │   └── fonts/                              # self-hosted Inter + JetBrains Mono
 ├── tailwind.config.js
 ├── input.css                          # Tailwind source, compiled to static/app.css

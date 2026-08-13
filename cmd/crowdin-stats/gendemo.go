@@ -14,14 +14,18 @@ import (
 // DEMO_CONTRIBUTORS) for the interactive "build your own embed" widget's
 // live preview — keep the two in sync if either changes.
 func generateDemoSVGs() {
-	table := renderTableSVG([]LanguageProgress{
-		{LanguageName: "French", Percent: 96},
-		{LanguageName: "German", Percent: 88},
-		{LanguageName: "Spanish", Percent: 82},
-		{LanguageName: "Japanese", Percent: 67},
-		{LanguageName: "Portuguese", Percent: 54},
-		{LanguageName: "Korean", Percent: 31},
-	}, defaultEmbedColors)
+	demoLanguages := []LanguageProgress{
+		{LanguageName: "French", Percent: 96, WordsTotal: 850, WordsTranslated: 816, PhrasesTotal: 620, PhrasesTranslated: 595},
+		{LanguageName: "German", Percent: 88, WordsTotal: 850, WordsTranslated: 748, PhrasesTotal: 620, PhrasesTranslated: 546},
+		{LanguageName: "Spanish", Percent: 82, WordsTotal: 850, WordsTranslated: 697, PhrasesTotal: 620, PhrasesTranslated: 508},
+		{LanguageName: "Japanese", Percent: 67, WordsTotal: 850, WordsTranslated: 570, PhrasesTotal: 620, PhrasesTranslated: 415},
+		{LanguageName: "Portuguese", Percent: 54, WordsTotal: 850, WordsTranslated: 459, PhrasesTotal: 620, PhrasesTranslated: 335},
+		{LanguageName: "Korean", Percent: 31, WordsTotal: 850, WordsTranslated: 264, PhrasesTotal: 620, PhrasesTranslated: 192},
+	}
+
+	table := renderTableSVG(demoLanguages, defaultEmbedColors)
+	overallCard := renderOverallCardSVG(demoLanguages, OverallUnitWords, MetricBoth, defaultEmbedColors)
+	overallCircle := renderOverallCircleSVG(demoLanguages, OverallUnitWords, defaultEmbedColors)
 
 	// Avatar URLs point at pravatar.cc's generated-face placeholder service —
 	// consistent-per-ID stock faces, not real people, safe to bake into a
@@ -57,5 +61,18 @@ func generateDemoSVGs() {
 		slog.Error("write demo-contributors.svg failed", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("wrote demo SVGs", "table", "static/demo-table.svg", "contributors", "static/demo-contributors.svg")
+	if err := os.WriteFile("static/demo-overall.svg", []byte(overallCard), 0o644); err != nil {
+		slog.Error("write demo-overall.svg failed", "error", err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile("static/demo-overall-circle.svg", []byte(overallCircle), 0o644); err != nil {
+		slog.Error("write demo-overall-circle.svg failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("wrote demo SVGs",
+		"table", "static/demo-table.svg",
+		"contributors", "static/demo-contributors.svg",
+		"overall", "static/demo-overall.svg",
+		"overall_circle", "static/demo-overall-circle.svg",
+	)
 }

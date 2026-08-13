@@ -21,10 +21,15 @@ import (
 // expiring around the same time and hammering Crowdin at once.
 var outboundLimiter = rate.NewLimiter(rate.Limit(5), 10)
 
-// LanguageProgress is the render-ready shape consumed by renderTableSVG.
+// LanguageProgress is the render-ready shape consumed by renderTableSVG and,
+// aggregated across all languages, by the overall.svg renderers.
 type LanguageProgress struct {
-	LanguageName string
-	Percent      int
+	LanguageName      string
+	Percent           int
+	WordsTotal        int
+	WordsTranslated   int
+	PhrasesTotal      int // "phrases" is Crowdin's internal name for strings
+	PhrasesTranslated int
 }
 
 // Contributor is the render-ready shape consumed by renderContributorsSVG.
@@ -137,8 +142,12 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 			name = *p.LanguageID
 		}
 		out = append(out, LanguageProgress{
-			LanguageName: name,
-			Percent:      p.TranslationProgress,
+			LanguageName:      name,
+			Percent:           p.TranslationProgress,
+			WordsTotal:        p.Words["total"],
+			WordsTranslated:   p.Words["translated"],
+			PhrasesTotal:      p.Phrases["total"],
+			PhrasesTranslated: p.Phrases["translated"],
 		})
 	}
 	return out, nil

@@ -7,6 +7,7 @@ encryption/token-handling guarantees.
 
 <p>
   <img src="static/demo-table.svg" alt="Translation progress table example" height="192">
+  <img src="static/demo-overall.svg" alt="Overall progress card example" height="192">
   <img src="static/demo-contributors.svg" alt="Contributor grid example" height="192">
 </p>
 

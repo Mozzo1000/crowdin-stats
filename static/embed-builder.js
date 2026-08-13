@@ -15,12 +15,12 @@
   var DEFAULT_COLORS = { bg: '#12161f', text: '#e8eaed', muted: '#8b93a3', accent: '#7dd3a8', border: '#232834' };
 
   var DEMO_LANGUAGES = [
-    { name: 'French', percent: 96 },
-    { name: 'German', percent: 88 },
-    { name: 'Spanish', percent: 82 },
-    { name: 'Japanese', percent: 67 },
-    { name: 'Portuguese', percent: 54 },
-    { name: 'Korean', percent: 31 },
+    { name: 'French', percent: 96, wordsTotal: 850, wordsTranslated: 816, phrasesTotal: 620, phrasesTranslated: 595 },
+    { name: 'German', percent: 88, wordsTotal: 850, wordsTranslated: 748, phrasesTotal: 620, phrasesTranslated: 546 },
+    { name: 'Spanish', percent: 82, wordsTotal: 850, wordsTranslated: 697, phrasesTotal: 620, phrasesTranslated: 508 },
+    { name: 'Japanese', percent: 67, wordsTotal: 850, wordsTranslated: 570, phrasesTotal: 620, phrasesTranslated: 415 },
+    { name: 'Portuguese', percent: 54, wordsTotal: 850, wordsTranslated: 459, phrasesTotal: 620, phrasesTranslated: 335 },
+    { name: 'Korean', percent: 31, wordsTotal: 850, wordsTranslated: 264, phrasesTotal: 620, phrasesTranslated: 192 },
   ];
 
   var DEMO_CONTRIBUTORS = [
@@ -142,6 +142,90 @@
     return out;
   }
 
+  // --- overall.svg, ported from renderOverallCardSVG/renderOverallCircleSVG in render.go ---
+  var CARD = { width: 340, height: 140, padding: 20 };
+  var CIRCLE = { size: 120, radius: 46 };
+
+  function aggregateOverall(languages, unit) {
+    var total = 0, translated = 0;
+    languages.forEach(function (lang) {
+      if (unit === 'strings') {
+        total += lang.phrasesTotal;
+        translated += lang.phrasesTranslated;
+      } else {
+        total += lang.wordsTotal;
+        translated += lang.wordsTranslated;
+      }
+    });
+    var percent = total > 0 ? clampPercent(Math.floor(translated * 100 / total)) : 0;
+    return { total: total, translated: translated, percent: percent };
+  }
+
+  function formatThousands(n) {
+    var s = String(n);
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 === 0) out += ',';
+      out += s[i];
+    }
+    return out;
+  }
+
+  function renderOverallCardSVG(languages, unit, metric, colors) {
+    var prog = aggregateOverall(languages, unit);
+    if (prog.total === 0) {
+      return emptyStateSVG(CARD.width, 60, 'no translation data yet', colors);
+    }
+
+    var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CARD.width + '" height="' + CARD.height +
+      '" viewBox="0 0 ' + CARD.width + ' ' + CARD.height + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
+    out += '<rect width="' + CARD.width + '" height="' + CARD.height + '" fill="' + colors.bg + '" rx="10"/>';
+    out += '<text x="' + CARD.padding + '" y="30" fill="' + colors.muted + '" font-size="12" font-weight="600" letter-spacing="0.06em">TRANSLATION PROGRESS</text>';
+
+    if (metric === 'fraction') {
+      out += '<text x="' + CARD.padding + '" y="82" fill="' + colors.accent + '" font-size="34" font-weight="700">' +
+        formatThousands(prog.translated) + ' / ' + formatThousands(prog.total) + ' ' + esc(unit) + '</text>';
+    } else {
+      out += '<text x="' + CARD.padding + '" y="82" fill="' + colors.accent + '" font-size="44" font-weight="700">' + prog.percent + '%</text>';
+      if (metric === 'both') {
+        out += '<text x="' + CARD.padding + '" y="106" fill="' + colors.text + '" font-size="13">' +
+          formatThousands(prog.translated) + ' / ' + formatThousands(prog.total) + ' ' + esc(unit) + '</text>';
+      }
+    }
+
+    var barY = CARD.height - 22;
+    var barWidth = CARD.width - CARD.padding * 2;
+    out += '<rect x="' + CARD.padding + '" y="' + barY + '" width="' + barWidth + '" height="8" rx="4" fill="' + colors.border + '"/>';
+    var filled = Math.floor(barWidth * prog.percent / 100);
+    out += '<rect x="' + CARD.padding + '" y="' + barY + '" width="' + filled + '" height="8" rx="4" fill="' + colors.accent + '"/>';
+
+    out += '</svg>';
+    return out;
+  }
+
+  function renderOverallCircleSVG(languages, unit, colors) {
+    var prog = aggregateOverall(languages, unit);
+    if (prog.total === 0) {
+      return emptyStateSVG(CIRCLE.size, CIRCLE.size, 'no data', colors);
+    }
+
+    var circumference = 2 * Math.PI * CIRCLE.radius;
+    var filled = circumference * prog.percent / 100;
+    var center = CIRCLE.size / 2;
+
+    var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CIRCLE.size + '" height="' + CIRCLE.size +
+      '" viewBox="0 0 ' + CIRCLE.size + ' ' + CIRCLE.size + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
+    out += '<rect width="' + CIRCLE.size + '" height="' + CIRCLE.size + '" fill="' + colors.bg + '" rx="10"/>';
+    out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.border + '" stroke-width="10"/>';
+    out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.accent +
+      '" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + filled.toFixed(2) + ' ' + circumference.toFixed(2) +
+      '" transform="rotate(-90 ' + center + ' ' + center + ')"/>';
+    out += '<text x="' + center + '" y="' + (center + 2) + '" fill="' + colors.text +
+      '" font-size="26" font-weight="700" text-anchor="middle" dominant-baseline="middle">' + prog.percent + '%</text>';
+    out += '</svg>';
+    return out;
+  }
+
   function emptyStateSVG(width, height, message, colors) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height +
       '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">' +
@@ -158,6 +242,11 @@
       if (state.limit !== 30) params.set('limit', state.limit);
       if (state.unit !== 'words') params.set('unit', state.unit);
       if (state.hideOwner) params.set('hideOwner', 'true');
+    }
+    if (type === 'overall') {
+      if (state.overallUnit !== 'words') params.set('unit', state.overallUnit);
+      if (state.overallVariant !== 'card') params.set('variant', state.overallVariant);
+      if (state.overallVariant !== 'circle' && state.overallMetric !== 'both') params.set('metric', state.overallMetric);
     }
     ['bg', 'text', 'muted', 'accent', 'border'].forEach(function (key) {
       var hex = state.colors[key].replace('#', '');
@@ -179,15 +268,22 @@
       limit: 30,
       unit: 'words',
       hideOwner: false,
+      overallUnit: 'words',
+      overallMetric: 'both',
+      overallVariant: 'card',
       colors: Object.assign({}, DEFAULT_COLORS),
     };
 
     var typeButtons = root.querySelectorAll('[data-embed-type]');
     var contribControls = root.querySelector('[data-builder-contrib-controls]');
+    var overallControls = root.querySelector('[data-builder-overall-controls]');
     var limitInput = root.querySelector('[data-builder-limit]');
     var limitValue = root.querySelector('[data-builder-limit-value]');
     var unitSelect = root.querySelector('[data-builder-unit]');
     var hideOwnerInput = root.querySelector('[data-builder-hideowner]');
+    var overallUnitSelect = root.querySelector('[data-builder-overall-unit]');
+    var overallMetricSelect = root.querySelector('[data-builder-overall-metric]');
+    var overallVariantSelect = root.querySelector('[data-builder-overall-variant]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
     var previewEl = root.querySelector('[data-builder-preview]');
     var previewImg = root.querySelector('[data-builder-preview-img]');
@@ -206,16 +302,26 @@
       if (contribControls) {
         contribControls.classList.toggle('hidden', state.type !== 'contributors');
       }
+      if (overallControls) {
+        overallControls.classList.toggle('hidden', state.type !== 'overall');
+      }
 
       var qs = buildQueryString(state.type, state);
-      var filename = state.type === 'table' ? 'table.svg' : 'contributors.svg';
+      var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
       var fullURL = baseEmbedURL + '/' + filename + qs;
       if (urlEl) urlEl.textContent = fullURL;
 
       if (mode === 'demo' && previewEl) {
-        var svg = state.type === 'table'
-          ? renderTableSVG(DEMO_LANGUAGES, state.colors)
-          : renderContributorsSVG(DEMO_CONTRIBUTORS, state.limit, state.colors);
+        var svg;
+        if (state.type === 'table') {
+          svg = renderTableSVG(DEMO_LANGUAGES, state.colors);
+        } else if (state.type === 'overall') {
+          svg = state.overallVariant === 'circle'
+            ? renderOverallCircleSVG(DEMO_LANGUAGES, state.overallUnit, state.colors)
+            : renderOverallCardSVG(DEMO_LANGUAGES, state.overallUnit, state.overallMetric, state.colors);
+        } else {
+          svg = renderContributorsSVG(DEMO_CONTRIBUTORS, state.limit, state.colors);
+        }
         previewEl.innerHTML = svg;
       } else if (mode === 'live' && previewImg) {
         clearTimeout(debounceTimer);
@@ -248,6 +354,25 @@
     if (hideOwnerInput) {
       hideOwnerInput.addEventListener('change', function () {
         state.hideOwner = hideOwnerInput.checked;
+        render();
+      });
+    }
+    if (overallUnitSelect) {
+      overallUnitSelect.addEventListener('change', function () {
+        state.overallUnit = overallUnitSelect.value;
+        render();
+      });
+    }
+    if (overallMetricSelect) {
+      overallMetricSelect.addEventListener('change', function () {
+        state.overallMetric = overallMetricSelect.value;
+        render();
+      });
+    }
+    if (overallVariantSelect) {
+      overallVariantSelect.addEventListener('change', function () {
+        state.overallVariant = overallVariantSelect.value;
+        if (overallMetricSelect) overallMetricSelect.disabled = state.overallVariant === 'circle';
         render();
       });
     }

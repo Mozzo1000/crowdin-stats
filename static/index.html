@@ -62,6 +62,7 @@
         <p class="text-text-muted text-xs font-medium mb-4">What appears in your README</p>
         <div class="space-y-4 overflow-x-auto">
           <img src="/static/demo-table.svg" alt="Example translation progress image" class="max-w-full" />
+          <img src="/static/demo-overall.svg" alt="Example overall progress image" class="max-w-full" />
           <img src="/static/demo-contributors.svg" alt="Example contributors image" class="max-w-full" />
         </div>
       </div>
@@ -109,6 +110,7 @@
       <div class="embed-builder panel p-5">
         <div class="flex gap-2 mb-5">
           <button type="button" data-embed-type="table" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Translation progress</button>
+          <button type="button" data-embed-type="overall" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Overall</button>
           <button type="button" data-embed-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
         </div>
 
@@ -132,6 +134,31 @@
             <input type="checkbox" data-builder-hideowner class="rounded border-border accent-accent" />
             Hide project owner
           </label>
+        </div>
+
+        <div data-builder-overall-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Variant</label>
+            <select data-builder-overall-variant class="field-mono w-full">
+              <option value="card">card</option>
+              <option value="circle">circle</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Unit</label>
+            <select data-builder-overall-unit class="field-mono w-full">
+              <option value="words">words</option>
+              <option value="strings">strings</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Metric <span class="text-text-muted font-normal">(card only)</span></label>
+            <select data-builder-overall-metric class="field-mono w-full">
+              <option value="both">both</option>
+              <option value="percentage">percentage</option>
+              <option value="fraction">fraction</option>
+            </select>
+          </div>
         </div>
 
         <div class="grid grid-cols-5 gap-2 mb-5 pb-5 border-b border-border">

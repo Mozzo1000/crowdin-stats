@@ -65,6 +65,7 @@ func main() {
 	mux.HandleFunc("POST /setup", s.handleSetup)
 	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsEmbed)
+	mux.HandleFunc("GET /embed/{publicID}/overall.svg", s.handleOverallEmbed)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -127,6 +128,7 @@ type setupResponse struct {
 	EmbedBaseURL    string `json:"embed_base_url"`
 	TableURL        string `json:"table_url"`
 	ContributorsURL string `json:"contributors_url"`
+	OverallURL      string `json:"overall_url"`
 	Markdown        string `json:"markdown"`
 }
 
@@ -176,12 +178,14 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	base := hostBaseURL(r)
 	tableURL := base + "/embed/" + publicID + "/table.svg"
 	contribURL := base + "/embed/" + publicID + "/contributors.svg?limit=30&unit=words"
+	overallURL := base + "/embed/" + publicID + "/overall.svg?unit=words&metric=both"
 	resp := setupResponse{
 		PublicID:        publicID,
 		EmbedBaseURL:    base + "/embed/" + publicID,
 		TableURL:        tableURL,
 		ContributorsURL: contribURL,
-		Markdown:        "![Translation Progress](" + tableURL + ")\n![Contributors](" + contribURL + ")",
+		OverallURL:      overallURL,
+		Markdown:        "![Translation Progress](" + tableURL + ")\n![Overall](" + overallURL + ")\n![Contributors](" + contribURL + ")",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -282,6 +286,53 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 	writeSVG(w, svg)
 }
 
+func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
+	publicID := r.PathValue("publicID")
+	p, err := getProject(s.db, publicID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	unit := OverallUnit(r.URL.Query().Get("unit"))
+	switch unit {
+	case OverallUnitWords, OverallUnitStrings:
+	default:
+		unit = OverallUnitWords
+	}
+
+	variant := r.URL.Query().Get("variant")
+	if variant != "circle" {
+		variant = "card"
+	}
+
+	// metric only applies to the card variant; normalized to a fixed
+	// placeholder for circle so ?metric=percentage and ?metric=fraction
+	// don't cache as separate (but visually identical) entries.
+	metric := OverallMetric(r.URL.Query().Get("metric"))
+	metricKey := string(metric)
+	if variant == "circle" {
+		metricKey = "n/a"
+	} else {
+		switch metric {
+		case MetricPercentage, MetricFraction, MetricBoth:
+		default:
+			metric = MetricBoth
+		}
+		metricKey = string(metric)
+	}
+
+	colors := parseEmbedColors(r.URL.Query())
+
+	cacheKey := "overall:" + publicID + ":unit=" + string(unit) + ":metric=" + metricKey + ":variant=" + variant + ":" + colors.cacheKeyFragment()
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderOverall(p, unit, metric, variant, colors), s.noCache)
+	if err != nil {
+		s.handleEmbedError(w, err, colors)
+		return
+	}
+	writeSVG(w, svg)
+}
+
 // handleEmbedError always responds with a valid SVG image rather than a
 // plain-text error body: these routes are consumed as <img src> in READMEs,
 // and a non-image response renders as a broken image icon with no
@@ -306,6 +357,23 @@ func (s *server) renderTable(p project, colors embedColors) fetchFunc {
 			return "", err
 		}
 		return renderTableSVG(langs, colors), nil
+	}
+}
+
+func (s *server) renderOverall(p project, unit OverallUnit, metric OverallMetric, variant string, colors embedColors) fetchFunc {
+	return func(ctx context.Context) (string, error) {
+		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
+		if err != nil {
+			return "", err
+		}
+		langs, err := FetchLanguageProgress(ctx, token, p.crowdinProjectID)
+		if err != nil {
+			return "", err
+		}
+		if variant == "circle" {
+			return renderOverallCircleSVG(langs, unit, colors), nil
+		}
+		return renderOverallCardSVG(langs, unit, metric, colors), nil
 	}
 }
 

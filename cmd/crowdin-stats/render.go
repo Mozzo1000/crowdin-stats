@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"html"
+	"math"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -173,6 +175,156 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 			cx, cy, avatarSize/2, colors.border)
 		b.WriteString(`</a>`)
 	}
+	b.WriteString(`</svg>`)
+	return b.String()
+}
+
+// OverallUnit is the metric overall.svg aggregates across languages. Unlike
+// ReportUnit (used by contributors.svg's top-members report), there is no
+// "characters" option here: the per-language progress endpoint that both
+// table.svg and overall.svg are built from only reports words and phrases
+// (Crowdin's internal name for strings) — adding characters would mean a
+// second Crowdin API call this endpoint is explicitly meant to avoid.
+type OverallUnit string
+
+const (
+	OverallUnitWords   OverallUnit = "words"
+	OverallUnitStrings OverallUnit = "strings"
+)
+
+// overallProgress is the aggregated total/translated/percent figure shared
+// by both overall.svg layouts, so the card and circle variants never
+// disagree on the underlying numbers.
+type overallProgress struct {
+	Total      int
+	Translated int
+	Percent    int
+}
+
+// aggregateOverallProgress sums per-language totals into a single
+// project-wide figure for the given unit.
+func aggregateOverallProgress(languages []LanguageProgress, unit OverallUnit) overallProgress {
+	var total, translated int
+	for _, lang := range languages {
+		if unit == OverallUnitStrings {
+			total += lang.PhrasesTotal
+			translated += lang.PhrasesTranslated
+		} else {
+			total += lang.WordsTotal
+			translated += lang.WordsTranslated
+		}
+	}
+	percent := 0
+	if total > 0 {
+		percent = clampPercent(translated * 100 / total)
+	}
+	return overallProgress{Total: total, Translated: translated, Percent: percent}
+}
+
+// formatThousands renders an integer with comma thousands separators, e.g.
+// 4213 -> "4,213", matching the fraction subtitle in the overall.svg mockup.
+func formatThousands(n int) string {
+	s := strconv.Itoa(n)
+	neg := strings.HasPrefix(s, "-")
+	if neg {
+		s = s[1:]
+	}
+	var out []byte
+	for i, c := range []byte(s) {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, c)
+	}
+	if neg {
+		return "-" + string(out)
+	}
+	return string(out)
+}
+
+// OverallMetric selects what overall.svg's card variant displays. Ignored
+// by the circle variant, which always shows percentage only — the
+// done/total fraction was tried at 120x120 and dropped as illegible.
+type OverallMetric string
+
+const (
+	MetricPercentage OverallMetric = "percentage"
+	MetricFraction   OverallMetric = "fraction"
+	MetricBoth       OverallMetric = "both"
+)
+
+const (
+	overallCardWidth   = 340
+	overallCardHeight  = 140
+	overallCardPadding = 20
+)
+
+// renderOverallCardSVG renders a wide summary card: label, big percentage,
+// optional fraction subtitle, and a thin progress bar.
+func renderOverallCardSVG(languages []LanguageProgress, unit OverallUnit, metric OverallMetric, colors embedColors) string {
+	prog := aggregateOverallProgress(languages, unit)
+	if prog.Total == 0 {
+		return emptyStateSVG(overallCardWidth, 60, "no translation data yet", colors)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
+		overallCardWidth, overallCardHeight, overallCardWidth, overallCardHeight)
+	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="%s" rx="10"/>`, overallCardWidth, overallCardHeight, colors.bg)
+	fmt.Fprintf(&b, `<text x="%d" y="30" fill="%s" font-size="12" font-weight="600" letter-spacing="0.06em">TRANSLATION PROGRESS</text>`,
+		overallCardPadding, colors.muted)
+
+	if metric == MetricFraction {
+		fmt.Fprintf(&b, `<text x="%d" y="82" fill="%s" font-size="34" font-weight="700">%s / %s %s</text>`,
+			overallCardPadding, colors.accent, formatThousands(prog.Translated), formatThousands(prog.Total), html.EscapeString(string(unit)))
+	} else {
+		fmt.Fprintf(&b, `<text x="%d" y="82" fill="%s" font-size="44" font-weight="700">%d%%</text>`,
+			overallCardPadding, colors.accent, prog.Percent)
+		if metric == MetricBoth {
+			fmt.Fprintf(&b, `<text x="%d" y="106" fill="%s" font-size="13">%s / %s %s</text>`,
+				overallCardPadding, colors.text, formatThousands(prog.Translated), formatThousands(prog.Total), html.EscapeString(string(unit)))
+		}
+	}
+
+	barY := overallCardHeight - 22
+	barWidth := overallCardWidth - overallCardPadding*2
+	fmt.Fprintf(&b, `<rect x="%d" y="%d" width="%d" height="8" rx="4" fill="%s"/>`,
+		overallCardPadding, barY, barWidth, colors.border)
+	filled := barWidth * prog.Percent / 100
+	fmt.Fprintf(&b, `<rect x="%d" y="%d" width="%d" height="8" rx="4" fill="%s"/>`,
+		overallCardPadding, barY, filled, colors.accent)
+
+	b.WriteString(`</svg>`)
+	return b.String()
+}
+
+const (
+	overallCircleSize   = 120
+	overallCircleRadius = 46
+)
+
+// renderOverallCircleSVG renders a compact 120x120 progress ring showing
+// percentage only, for inline use where a card is too large.
+func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, colors embedColors) string {
+	prog := aggregateOverallProgress(languages, unit)
+	if prog.Total == 0 {
+		return emptyStateSVG(overallCircleSize, overallCircleSize, "no data", colors)
+	}
+
+	circumference := 2 * math.Pi * overallCircleRadius
+	filled := circumference * float64(prog.Percent) / 100
+	center := overallCircleSize / 2
+
+	var b strings.Builder
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
+		overallCircleSize, overallCircleSize, overallCircleSize, overallCircleSize)
+	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="%s" rx="10"/>`, overallCircleSize, overallCircleSize, colors.bg)
+	fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="10"/>`,
+		center, center, overallCircleRadius, colors.border)
+	fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="10" stroke-linecap="round" stroke-dasharray="%.2f %.2f" transform="rotate(-90 %d %d)"/>`,
+		center, center, overallCircleRadius, colors.accent, filled, circumference, center, center)
+	fmt.Fprintf(&b, `<text x="%d" y="%d" fill="%s" font-size="26" font-weight="700" text-anchor="middle" dominant-baseline="middle">%d%%</text>`,
+		center, center+2, colors.text, prog.Percent)
 	b.WriteString(`</svg>`)
 	return b.String()
 }

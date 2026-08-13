@@ -22,14 +22,20 @@ import (
 var outboundLimiter = rate.NewLimiter(rate.Limit(5), 10)
 
 // LanguageProgress is the render-ready shape consumed by renderTableSVG and,
-// aggregated across all languages, by the overall.svg renderers.
+// aggregated across all languages, by the overall.svg renderers. It carries
+// both translation and approval figures so callers can pick which one to
+// render (see ProgressType) without a second Crowdin API call.
 type LanguageProgress struct {
 	LanguageName      string
-	Percent           int
+	LanguageID        string // Crowdin/ISO language code, e.g. "fr" — used to match the `languages` pin list
+	Percent           int    // translation progress %
+	ApprovalPercent   int
 	WordsTotal        int
 	WordsTranslated   int
+	WordsApproved     int
 	PhrasesTotal      int // "phrases" is Crowdin's internal name for strings
 	PhrasesTranslated int
+	PhrasesApproved   int
 }
 
 // Contributor is the render-ready shape consumed by renderContributorsSVG.
@@ -135,19 +141,25 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 
 	out := make([]LanguageProgress, 0, len(progress))
 	for _, p := range progress {
-		name := ""
+		name, langID := "", ""
 		if p.Language != nil {
 			name = p.Language.Name
+			langID = p.Language.ID
 		} else if p.LanguageID != nil {
 			name = *p.LanguageID
+			langID = *p.LanguageID
 		}
 		out = append(out, LanguageProgress{
 			LanguageName:      name,
+			LanguageID:        langID,
 			Percent:           p.TranslationProgress,
+			ApprovalPercent:   p.ApprovalProgress,
 			WordsTotal:        p.Words["total"],
 			WordsTranslated:   p.Words["translated"],
+			WordsApproved:     p.Words["approved"],
 			PhrasesTotal:      p.Phrases["total"],
 			PhrasesTranslated: p.Phrases["translated"],
+			PhrasesApproved:   p.Phrases["approved"],
 		})
 	}
 	return out, nil

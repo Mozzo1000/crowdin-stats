@@ -317,10 +317,34 @@ Onboarding endpoint.
 }
 ```
 
-### `GET /embed/{public_id}/table.svg`
-Renders the progress table. No query parameters.
+### `GET /embed/{public_id}/table.svg?progress=translation&limit=0&minPercent=0&languages=`
+Renders the progress table.
 
-- Cache key: `table:{public_id}`
+**Query parameters:**
+- `progress` — one of `translation | approval`, default `translation`. Both
+  figures are already on every fetched `LanguageProgress` (see §6), so
+  switching doesn't cost a second Crowdin API call.
+- `limit` — integer, default `0` (unlimited), clamped to `[1, 200]` when set.
+  Keeps only the top-N languages by percent — the fix for a 60-language
+  project rendering a ~1700px-tall image. Unlimited by default so existing
+  `table.svg` embeds don't change shape on upgrade.
+- `minPercent` — integer `[0, 100]`, default `0`. Drops languages below this
+  translation/approval percent before the `limit` cutoff is applied.
+- `languages` — comma-separated language codes or display names (e.g.
+  `fr,de,Japanese`, case-insensitive, max 50), always shown regardless of
+  `limit`/`minPercent`. Pinned languages are additive: they never count
+  against `limit`, so pinning only grows the table. This is the escape
+  hatch for keeping a specific target language visible even if it's
+  low-progress or would otherwise fall outside the top N.
+
+**Cache key must include all four parameters:**
+```
+table:{public_id}:progress={progress}:limit={limit}:minPercent={minPercent}:languages={sorted,lowercased,comma-joined pins}
+```
+The `languages` fragment is built from the *parsed* pin set (sorted,
+lowercased, deduplicated) rather than the raw query string, so equivalent
+inputs like `?languages=fr,de` and `?languages=de, fr` share one cache entry.
+
 - 404 if `revoked = 1` or `public_id` not found.
 - Cache hit + fresh → serve immediately.
 - Cache hit + stale (>12h) → serve stale immediately, trigger background
@@ -361,6 +385,9 @@ badge next to a heading).
   words and phrases/strings only), rather than issuing a second Crowdin API
   call. An unrecognized value (including `characters`) falls back to
   `words`.
+- `progress` — one of `translation | approval`, default `translation`. Same
+  meaning as `table.svg`'s `progress` param (§7 above) — switches which of
+  Crowdin's two percentages is aggregated, no extra API call.
 - `metric` — one of `percentage | fraction | both`, default `both`. Only
   applies to `variant=card`; ignored (no-op, not an error) when
   `variant=circle`.
@@ -372,7 +399,7 @@ badge next to a heading).
 
 **Cache key:**
 ```
-overall:{public_id}:unit={unit}:metric={metric}:variant={variant}
+overall:{public_id}:unit={unit}:progress={progress}:metric={metric}:variant={variant}
 ```
 For `variant=circle`, `metric` is normalized to a fixed placeholder
 (`metric=n/a`) before building the key, so `?variant=circle&metric=percentage`
@@ -714,7 +741,10 @@ injection on the one page that handles a secret.
 
 ### `table.svg`
 Simple horizontal bar per language: label, background track, filled bar
-scaled to progress %, percentage label.
+scaled to progress %, percentage label. `prepareTableLanguages` runs ahead
+of the renderer to apply `progress`/`limit`/`minPercent`/`languages` (§7) —
+`renderTableSVG` itself stays a dumb `[]LanguageProgress → string` function
+with no knowledge of any of those query params.
 
 ### `contributors.svg`
 Grid of circular avatars (contrib.rocks style), using `<clipPath>` circles +

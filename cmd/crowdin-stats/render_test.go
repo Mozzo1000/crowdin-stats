@@ -75,7 +75,7 @@ func TestRenderOverallCardSVG(t *testing.T) {
 		{WordsTotal: 100, WordsTranslated: 75, PhrasesTotal: 40, PhrasesTranslated: 10},
 		{WordsTotal: 100, WordsTranslated: 25, PhrasesTotal: 40, PhrasesTranslated: 10},
 	}
-	svg := renderOverallCardSVG(langs, OverallUnitWords, MetricBoth, defaultEmbedColors)
+	svg := renderOverallCardSVG(langs, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors)
 	if !strings.HasPrefix(svg, "<svg") {
 		t.Fatalf("expected svg output, got: %s", svg)
 	}
@@ -90,12 +90,12 @@ func TestRenderOverallCardSVG(t *testing.T) {
 func TestRenderOverallCardSVGMetrics(t *testing.T) {
 	langs := []LanguageProgress{{WordsTotal: 4, WordsTranslated: 1}}
 
-	percentOnly := renderOverallCardSVG(langs, OverallUnitWords, MetricPercentage, defaultEmbedColors)
+	percentOnly := renderOverallCardSVG(langs, OverallUnitWords, MetricPercentage, ProgressTranslation, defaultEmbedColors)
 	if strings.Contains(percentOnly, "1 / 4") {
 		t.Fatalf("metric=percentage should not show the fraction: %s", percentOnly)
 	}
 
-	fractionOnly := renderOverallCardSVG(langs, OverallUnitWords, MetricFraction, defaultEmbedColors)
+	fractionOnly := renderOverallCardSVG(langs, OverallUnitWords, MetricFraction, ProgressTranslation, defaultEmbedColors)
 	if !strings.Contains(fractionOnly, "1 / 4 words") {
 		t.Fatalf("metric=fraction should show the fraction: %s", fractionOnly)
 	}
@@ -106,14 +106,14 @@ func TestRenderOverallCardSVGMetrics(t *testing.T) {
 
 func TestRenderOverallCardSVGStrings(t *testing.T) {
 	langs := []LanguageProgress{{WordsTotal: 100, WordsTranslated: 100, PhrasesTotal: 40, PhrasesTranslated: 10}}
-	svg := renderOverallCardSVG(langs, OverallUnitStrings, MetricBoth, defaultEmbedColors)
+	svg := renderOverallCardSVG(langs, OverallUnitStrings, MetricBoth, ProgressTranslation, defaultEmbedColors)
 	if !strings.Contains(svg, "25%") || !strings.Contains(svg, "10 / 40 strings") {
 		t.Fatalf("expected strings-based aggregation, got: %s", svg)
 	}
 }
 
 func TestRenderOverallCardSVGEmpty(t *testing.T) {
-	svg := renderOverallCardSVG(nil, OverallUnitWords, MetricBoth, defaultEmbedColors)
+	svg := renderOverallCardSVG(nil, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors)
 	if !strings.Contains(svg, "no translation data yet") {
 		t.Fatalf("expected empty state message, got: %s", svg)
 	}
@@ -121,7 +121,7 @@ func TestRenderOverallCardSVGEmpty(t *testing.T) {
 
 func TestRenderOverallCircleSVG(t *testing.T) {
 	langs := []LanguageProgress{{WordsTotal: 4, WordsTranslated: 3}}
-	svg := renderOverallCircleSVG(langs, OverallUnitWords, defaultEmbedColors)
+	svg := renderOverallCircleSVG(langs, OverallUnitWords, ProgressTranslation, defaultEmbedColors)
 	if !strings.HasPrefix(svg, "<svg") {
 		t.Fatalf("expected svg output, got: %s", svg)
 	}
@@ -134,7 +134,7 @@ func TestRenderOverallCircleSVG(t *testing.T) {
 }
 
 func TestRenderOverallCircleSVGEmpty(t *testing.T) {
-	svg := renderOverallCircleSVG(nil, OverallUnitWords, defaultEmbedColors)
+	svg := renderOverallCircleSVG(nil, OverallUnitWords, ProgressTranslation, defaultEmbedColors)
 	if !strings.Contains(svg, "no data") {
 		t.Fatalf("expected empty state message, got: %s", svg)
 	}
@@ -146,6 +146,75 @@ func TestFormatThousands(t *testing.T) {
 		if got := formatThousands(n); got != want {
 			t.Errorf("formatThousands(%d) = %q, want %q", n, got, want)
 		}
+	}
+}
+
+func TestRenderOverallCardSVGApproval(t *testing.T) {
+	langs := []LanguageProgress{{WordsTotal: 100, WordsTranslated: 90, WordsApproved: 40}}
+	svg := renderOverallCardSVG(langs, OverallUnitWords, MetricBoth, ProgressApproval, defaultEmbedColors)
+	if !strings.Contains(svg, "40%") || !strings.Contains(svg, "40 / 100 words") {
+		t.Fatalf("expected approval-based aggregation (40/100), got: %s", svg)
+	}
+	if !strings.Contains(svg, "APPROVAL PROGRESS") {
+		t.Fatalf("expected approval label, got: %s", svg)
+	}
+}
+
+func TestPrepareTableLanguagesLimitAndMinPercent(t *testing.T) {
+	langs := []LanguageProgress{
+		{LanguageName: "A", Percent: 90},
+		{LanguageName: "B", Percent: 10},
+		{LanguageName: "C", Percent: 50},
+		{LanguageName: "D", Percent: 5},
+	}
+	out := prepareTableLanguages(langs, ProgressTranslation, 20, 1, nil)
+	if len(out) != 1 || out[0].LanguageName != "A" {
+		t.Fatalf("expected only the top language above minPercent, got: %+v", out)
+	}
+}
+
+func TestPrepareTableLanguagesPinnedBypassesFilters(t *testing.T) {
+	langs := []LanguageProgress{
+		{LanguageName: "French", LanguageID: "fr", Percent: 90},
+		{LanguageName: "German", LanguageID: "de", Percent: 80},
+		{LanguageName: "Korean", LanguageID: "ko", Percent: 2}, // below minPercent, pinned
+	}
+	pinned := parseLanguagePins("ko")
+	out := prepareTableLanguages(langs, ProgressTranslation, 50, 1, pinned)
+
+	names := map[string]bool{}
+	for _, l := range out {
+		names[l.LanguageName] = true
+	}
+	if !names["Korean"] {
+		t.Fatalf("expected pinned Korean to survive minPercent+limit filtering, got: %+v", out)
+	}
+	if len(out) != 2 { // 1 pinned + top-1 of the rest
+		t.Fatalf("expected pinned + limit=1 of the rest (2 total), got %d: %+v", len(out), out)
+	}
+}
+
+func TestPrepareTableLanguagesApproval(t *testing.T) {
+	langs := []LanguageProgress{{LanguageName: "French", Percent: 90, ApprovalPercent: 10}}
+	out := prepareTableLanguages(langs, ProgressApproval, 0, 0, nil)
+	if out[0].Percent != 10 {
+		t.Fatalf("expected Percent swapped to ApprovalPercent, got %d", out[0].Percent)
+	}
+}
+
+func TestParseLanguagePins(t *testing.T) {
+	pinned := parseLanguagePins(" FR, de ,,Japanese")
+	want := map[string]bool{"fr": true, "de": true, "japanese": true}
+	if len(pinned) != len(want) {
+		t.Fatalf("got %v, want %v", pinned, want)
+	}
+	for k := range want {
+		if !pinned[k] {
+			t.Fatalf("missing key %q in %v", k, pinned)
+		}
+	}
+	if parseLanguagePins("") != nil {
+		t.Fatalf("expected nil for empty input")
 	}
 }
 

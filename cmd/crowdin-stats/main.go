@@ -227,6 +227,19 @@ func parseEmbedColors(q url.Values) embedColors {
 	}
 }
 
+// parseProgressType reads the `progress` query param shared by table.svg and
+// overall.svg: translation (default) or approval. Both figures are already
+// present on every fetched LanguageProgress, so this never needs its own
+// Crowdin API call.
+func parseProgressType(q url.Values) ProgressType {
+	switch ProgressType(q.Get("progress")) {
+	case ProgressApproval:
+		return ProgressApproval
+	default:
+		return ProgressTranslation
+	}
+}
+
 func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
 	p, err := getProject(s.db, publicID)
@@ -235,10 +248,41 @@ func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	colors := parseEmbedColors(r.URL.Query())
+	q := r.URL.Query()
+	progressType := parseProgressType(q)
 
-	cacheKey := "table:" + publicID + ":" + colors.cacheKeyFragment()
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderTable(p, colors), s.noCache)
+	limit := 0
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+		if limit < 1 {
+			limit = 1
+		}
+		if limit > 200 {
+			limit = 200
+		}
+	}
+
+	minPercent := 0
+	if v := q.Get("minPercent"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			minPercent = n
+		}
+		minPercent = clampPercent(minPercent)
+	}
+
+	pinned := parseLanguagePins(q.Get("languages"))
+
+	colors := parseEmbedColors(q)
+
+	cacheKey := "table:" + publicID +
+		":progress=" + string(progressType) +
+		":limit=" + strconv.Itoa(limit) +
+		":minPercent=" + strconv.Itoa(minPercent) +
+		":languages=" + pinnedCacheKeyFragment(pinned) +
+		":" + colors.cacheKeyFragment()
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderTable(p, progressType, limit, minPercent, pinned, colors), s.noCache)
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
@@ -294,14 +338,18 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unit := OverallUnit(r.URL.Query().Get("unit"))
+	q := r.URL.Query()
+
+	unit := OverallUnit(q.Get("unit"))
 	switch unit {
 	case OverallUnitWords, OverallUnitStrings:
 	default:
 		unit = OverallUnitWords
 	}
 
-	variant := r.URL.Query().Get("variant")
+	progressType := parseProgressType(q)
+
+	variant := q.Get("variant")
 	if variant != "circle" {
 		variant = "card"
 	}
@@ -309,7 +357,7 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 	// metric only applies to the card variant; normalized to a fixed
 	// placeholder for circle so ?metric=percentage and ?metric=fraction
 	// don't cache as separate (but visually identical) entries.
-	metric := OverallMetric(r.URL.Query().Get("metric"))
+	metric := OverallMetric(q.Get("metric"))
 	metricKey := string(metric)
 	if variant == "circle" {
 		metricKey = "n/a"
@@ -322,10 +370,10 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 		metricKey = string(metric)
 	}
 
-	colors := parseEmbedColors(r.URL.Query())
+	colors := parseEmbedColors(q)
 
-	cacheKey := "overall:" + publicID + ":unit=" + string(unit) + ":metric=" + metricKey + ":variant=" + variant + ":" + colors.cacheKeyFragment()
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderOverall(p, unit, metric, variant, colors), s.noCache)
+	cacheKey := "overall:" + publicID + ":unit=" + string(unit) + ":progress=" + string(progressType) + ":metric=" + metricKey + ":variant=" + variant + ":" + colors.cacheKeyFragment()
+	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderOverall(p, unit, metric, progressType, variant, colors), s.noCache)
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
@@ -346,7 +394,7 @@ func (s *server) handleEmbedError(w http.ResponseWriter, err error, colors embed
 	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
 }
 
-func (s *server) renderTable(p project, colors embedColors) fetchFunc {
+func (s *server) renderTable(p project, progressType ProgressType, limit, minPercent int, pinned map[string]bool, colors embedColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -356,11 +404,12 @@ func (s *server) renderTable(p project, colors embedColors) fetchFunc {
 		if err != nil {
 			return "", err
 		}
+		langs = prepareTableLanguages(langs, progressType, minPercent, limit, pinned)
 		return renderTableSVG(langs, colors), nil
 	}
 }
 
-func (s *server) renderOverall(p project, unit OverallUnit, metric OverallMetric, variant string, colors embedColors) fetchFunc {
+func (s *server) renderOverall(p project, unit OverallUnit, metric OverallMetric, progressType ProgressType, variant string, colors embedColors) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -371,9 +420,9 @@ func (s *server) renderOverall(p project, unit OverallUnit, metric OverallMetric
 			return "", err
 		}
 		if variant == "circle" {
-			return renderOverallCircleSVG(langs, unit, colors), nil
+			return renderOverallCircleSVG(langs, unit, progressType, colors), nil
 		}
-		return renderOverallCardSVG(langs, unit, metric, colors), nil
+		return renderOverallCardSVG(langs, unit, metric, progressType, colors), nil
 	}
 }
 

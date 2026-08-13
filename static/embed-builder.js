@@ -15,12 +15,12 @@
   var DEFAULT_COLORS = { bg: '#12161f', text: '#e8eaed', muted: '#8b93a3', accent: '#7dd3a8', border: '#232834' };
 
   var DEMO_LANGUAGES = [
-    { name: 'French', percent: 96, wordsTotal: 850, wordsTranslated: 816, phrasesTotal: 620, phrasesTranslated: 595 },
-    { name: 'German', percent: 88, wordsTotal: 850, wordsTranslated: 748, phrasesTotal: 620, phrasesTranslated: 546 },
-    { name: 'Spanish', percent: 82, wordsTotal: 850, wordsTranslated: 697, phrasesTotal: 620, phrasesTranslated: 508 },
-    { name: 'Japanese', percent: 67, wordsTotal: 850, wordsTranslated: 570, phrasesTotal: 620, phrasesTranslated: 415 },
-    { name: 'Portuguese', percent: 54, wordsTotal: 850, wordsTranslated: 459, phrasesTotal: 620, phrasesTranslated: 335 },
-    { name: 'Korean', percent: 31, wordsTotal: 850, wordsTranslated: 264, phrasesTotal: 620, phrasesTranslated: 192 },
+    { id: 'fr', name: 'French', percent: 96, approvalPercent: 80, wordsTotal: 850, wordsTranslated: 816, wordsApproved: 680, phrasesTotal: 620, phrasesTranslated: 595, phrasesApproved: 496 },
+    { id: 'de', name: 'German', percent: 88, approvalPercent: 65, wordsTotal: 850, wordsTranslated: 748, wordsApproved: 552, phrasesTotal: 620, phrasesTranslated: 546, phrasesApproved: 403 },
+    { id: 'es', name: 'Spanish', percent: 82, approvalPercent: 60, wordsTotal: 850, wordsTranslated: 697, wordsApproved: 510, phrasesTotal: 620, phrasesTranslated: 508, phrasesApproved: 372 },
+    { id: 'ja', name: 'Japanese', percent: 67, approvalPercent: 40, wordsTotal: 850, wordsTranslated: 570, wordsApproved: 340, phrasesTotal: 620, phrasesTranslated: 415, phrasesApproved: 248 },
+    { id: 'pt', name: 'Portuguese', percent: 54, approvalPercent: 30, wordsTotal: 850, wordsTranslated: 459, wordsApproved: 255, phrasesTotal: 620, phrasesTranslated: 335, phrasesApproved: 186 },
+    { id: 'ko', name: 'Korean', percent: 31, approvalPercent: 12, wordsTotal: 850, wordsTranslated: 264, wordsApproved: 102, phrasesTotal: 620, phrasesTranslated: 192, phrasesApproved: 74 },
   ];
 
   var DEMO_CONTRIBUTORS = [
@@ -54,11 +54,58 @@
     return esc(chars.slice(0, max - 1).join('') + '…');
   }
 
-  // --- table.svg, ported from renderTableSVG in render.go ---
+  // --- table.svg, ported from renderTableSVG/prepareTableLanguages in render.go ---
   var TABLE = {
     rowHeight: 28, width: 360, labelWidth: 110, barWidth: 160,
     barGap: 8, paddingX: 12, paddingTop: 12,
   };
+
+  // parseLanguagePins, ported from render.go — comma-separated codes/names
+  // into a lowercased lookup set, capped at 50 entries.
+  function parseLanguagePins(raw) {
+    if (!raw) return {};
+    var out = {};
+    var count = 0;
+    raw.split(',').some(function (p) {
+      p = p.trim().toLowerCase();
+      if (p) {
+        out[p] = true;
+        count++;
+      }
+      return count >= 50;
+    });
+    return out;
+  }
+
+  // prepareTableLanguages, ported from render.go — swaps in approval %
+  // when requested, then pins + filters/sorts/truncates the remainder.
+  // Pinned languages are additive: they don't count against `limit`.
+  function prepareTableLanguages(languages, progress, minPercent, limit, pinned) {
+    var prepared = languages.map(function (lang) {
+      var copy = Object.assign({}, lang);
+      if (progress === 'approval') copy.percent = copy.approvalPercent;
+      return copy;
+    });
+
+    var pinnedOut = [], rest = [];
+    prepared.forEach(function (lang) {
+      var id = (lang.id || '').toLowerCase();
+      var name = (lang.name || '').toLowerCase();
+      if (pinned[id] || pinned[name]) {
+        pinnedOut.push(lang);
+      } else if (lang.percent >= minPercent) {
+        rest.push(lang);
+      }
+    });
+
+    rest.sort(function (a, b) {
+      if (a.percent !== b.percent) return b.percent - a.percent;
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+    if (limit > 0 && rest.length > limit) rest = rest.slice(0, limit);
+
+    return pinnedOut.concat(rest);
+  }
 
   function renderTableSVG(languages, colors) {
     var sorted = languages.slice().sort(function (a, b) {
@@ -146,15 +193,16 @@
   var CARD = { width: 340, height: 140, padding: 20 };
   var CIRCLE = { size: 120, radius: 46 };
 
-  function aggregateOverall(languages, unit) {
+  function aggregateOverall(languages, unit, progress) {
     var total = 0, translated = 0;
+    var approval = progress === 'approval';
     languages.forEach(function (lang) {
       if (unit === 'strings') {
         total += lang.phrasesTotal;
-        translated += lang.phrasesTranslated;
+        translated += approval ? lang.phrasesApproved : lang.phrasesTranslated;
       } else {
         total += lang.wordsTotal;
-        translated += lang.wordsTranslated;
+        translated += approval ? lang.wordsApproved : lang.wordsTranslated;
       }
     });
     var percent = total > 0 ? clampPercent(Math.floor(translated * 100 / total)) : 0;
@@ -171,16 +219,17 @@
     return out;
   }
 
-  function renderOverallCardSVG(languages, unit, metric, colors) {
-    var prog = aggregateOverall(languages, unit);
+  function renderOverallCardSVG(languages, unit, metric, progress, colors) {
+    var prog = aggregateOverall(languages, unit, progress);
     if (prog.total === 0) {
       return emptyStateSVG(CARD.width, 60, 'no translation data yet', colors);
     }
 
+    var label = progress === 'approval' ? 'APPROVAL PROGRESS' : 'TRANSLATION PROGRESS';
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CARD.width + '" height="' + CARD.height +
       '" viewBox="0 0 ' + CARD.width + ' ' + CARD.height + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
     out += '<rect width="' + CARD.width + '" height="' + CARD.height + '" fill="' + colors.bg + '" rx="10"/>';
-    out += '<text x="' + CARD.padding + '" y="30" fill="' + colors.muted + '" font-size="12" font-weight="600" letter-spacing="0.06em">TRANSLATION PROGRESS</text>';
+    out += '<text x="' + CARD.padding + '" y="30" fill="' + colors.muted + '" font-size="12" font-weight="600" letter-spacing="0.06em">' + label + '</text>';
 
     if (metric === 'fraction') {
       out += '<text x="' + CARD.padding + '" y="82" fill="' + colors.accent + '" font-size="34" font-weight="700">' +
@@ -203,8 +252,8 @@
     return out;
   }
 
-  function renderOverallCircleSVG(languages, unit, colors) {
-    var prog = aggregateOverall(languages, unit);
+  function renderOverallCircleSVG(languages, unit, progress, colors) {
+    var prog = aggregateOverall(languages, unit, progress);
     if (prog.total === 0) {
       return emptyStateSVG(CIRCLE.size, CIRCLE.size, 'no data', colors);
     }
@@ -238,6 +287,12 @@
 
   function buildQueryString(type, state) {
     var params = new URLSearchParams();
+    if (type === 'table') {
+      if (state.tableProgress !== 'translation') params.set('progress', state.tableProgress);
+      if (state.tableLimit > 0) params.set('limit', state.tableLimit);
+      if (state.tableMinPercent > 0) params.set('minPercent', state.tableMinPercent);
+      if (state.tableLanguages.trim()) params.set('languages', state.tableLanguages.trim());
+    }
     if (type === 'contributors') {
       if (state.limit !== 30) params.set('limit', state.limit);
       if (state.unit !== 'words') params.set('unit', state.unit);
@@ -245,6 +300,7 @@
     }
     if (type === 'overall') {
       if (state.overallUnit !== 'words') params.set('unit', state.overallUnit);
+      if (state.overallProgress !== 'translation') params.set('progress', state.overallProgress);
       if (state.overallVariant !== 'card') params.set('variant', state.overallVariant);
       if (state.overallVariant !== 'circle' && state.overallMetric !== 'both') params.set('metric', state.overallMetric);
     }
@@ -268,7 +324,12 @@
       limit: 30,
       unit: 'words',
       hideOwner: false,
+      tableProgress: 'translation',
+      tableLimit: 0,
+      tableMinPercent: 0,
+      tableLanguages: '',
       overallUnit: 'words',
+      overallProgress: 'translation',
       overallMetric: 'both',
       overallVariant: 'card',
       colors: Object.assign({}, DEFAULT_COLORS),
@@ -277,11 +338,17 @@
     var typeButtons = root.querySelectorAll('[data-embed-type]');
     var contribControls = root.querySelector('[data-builder-contrib-controls]');
     var overallControls = root.querySelector('[data-builder-overall-controls]');
+    var tableControls = root.querySelector('[data-builder-table-controls]');
     var limitInput = root.querySelector('[data-builder-limit]');
     var limitValue = root.querySelector('[data-builder-limit-value]');
     var unitSelect = root.querySelector('[data-builder-unit]');
     var hideOwnerInput = root.querySelector('[data-builder-hideowner]');
+    var tableProgressSelect = root.querySelector('[data-builder-table-progress]');
+    var tableLimitInput = root.querySelector('[data-builder-table-limit]');
+    var tableMinPercentInput = root.querySelector('[data-builder-table-minpercent]');
+    var tableLanguagesInput = root.querySelector('[data-builder-table-languages]');
     var overallUnitSelect = root.querySelector('[data-builder-overall-unit]');
+    var overallProgressSelect = root.querySelector('[data-builder-overall-progress]');
     var overallMetricSelect = root.querySelector('[data-builder-overall-metric]');
     var overallVariantSelect = root.querySelector('[data-builder-overall-variant]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
@@ -305,6 +372,9 @@
       if (overallControls) {
         overallControls.classList.toggle('hidden', state.type !== 'overall');
       }
+      if (tableControls) {
+        tableControls.classList.toggle('hidden', state.type !== 'table');
+      }
 
       var qs = buildQueryString(state.type, state);
       var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
@@ -314,11 +384,13 @@
       if (mode === 'demo' && previewEl) {
         var svg;
         if (state.type === 'table') {
-          svg = renderTableSVG(DEMO_LANGUAGES, state.colors);
+          var pinned = parseLanguagePins(state.tableLanguages);
+          var prepared = prepareTableLanguages(DEMO_LANGUAGES, state.tableProgress, state.tableMinPercent, state.tableLimit, pinned);
+          svg = renderTableSVG(prepared, state.colors);
         } else if (state.type === 'overall') {
           svg = state.overallVariant === 'circle'
-            ? renderOverallCircleSVG(DEMO_LANGUAGES, state.overallUnit, state.colors)
-            : renderOverallCardSVG(DEMO_LANGUAGES, state.overallUnit, state.overallMetric, state.colors);
+            ? renderOverallCircleSVG(DEMO_LANGUAGES, state.overallUnit, state.overallProgress, state.colors)
+            : renderOverallCardSVG(DEMO_LANGUAGES, state.overallUnit, state.overallMetric, state.overallProgress, state.colors);
         } else {
           svg = renderContributorsSVG(DEMO_CONTRIBUTORS, state.limit, state.colors);
         }
@@ -354,6 +426,36 @@
     if (hideOwnerInput) {
       hideOwnerInput.addEventListener('change', function () {
         state.hideOwner = hideOwnerInput.checked;
+        render();
+      });
+    }
+    if (tableProgressSelect) {
+      tableProgressSelect.addEventListener('change', function () {
+        state.tableProgress = tableProgressSelect.value;
+        render();
+      });
+    }
+    if (tableLimitInput) {
+      tableLimitInput.addEventListener('input', function () {
+        state.tableLimit = parseInt(tableLimitInput.value, 10) || 0;
+        render();
+      });
+    }
+    if (tableMinPercentInput) {
+      tableMinPercentInput.addEventListener('input', function () {
+        state.tableMinPercent = parseInt(tableMinPercentInput.value, 10) || 0;
+        render();
+      });
+    }
+    if (tableLanguagesInput) {
+      tableLanguagesInput.addEventListener('input', function () {
+        state.tableLanguages = tableLanguagesInput.value;
+        render();
+      });
+    }
+    if (overallProgressSelect) {
+      overallProgressSelect.addEventListener('change', function () {
+        state.overallProgress = overallProgressSelect.value;
         render();
       });
     }

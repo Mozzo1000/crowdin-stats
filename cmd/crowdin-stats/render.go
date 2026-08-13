@@ -62,6 +62,107 @@ const (
 	tablePaddingTop  = 12
 )
 
+// ProgressType selects which of the two percentages Crowdin tracks per
+// language — translation or approval/proofreading — table.svg and
+// overall.svg render. Both are already present on every LanguageProgress
+// (see crowdin.go), so switching between them never needs a second API call.
+type ProgressType string
+
+const (
+	ProgressTranslation ProgressType = "translation"
+	ProgressApproval    ProgressType = "approval"
+)
+
+// prepareTableLanguages applies table.svg's three filters, in order:
+//  1. progressType — swap each language's rendered Percent to its approval
+//     figure, so sorting/filtering/rendering downstream all agree on which
+//     number is "the" percent.
+//  2. pinned — languages named in the `languages` query param (matched
+//     case-insensitively against either LanguageID or LanguageName) are
+//     always kept, bypassing both minPercent and limit below. This is what
+//     lets a maintainer pin a specific target language into the table even
+//     if it's low-progress or would otherwise fall outside the top N.
+//     Pinned languages are additive: they don't count against `limit`, so
+//     pinning a language always grows the table rather than bumping
+//     something else out of it.
+//  3. minPercent / limit — applied only to the non-pinned remainder: drop
+//     anything below minPercent, sort by percent descending, then keep only
+//     the top `limit` (0 = unlimited).
+//
+// renderTableSVG re-sorts its input anyway, so the pinned+kept slices don't
+// need to be merged in any particular order here.
+func prepareTableLanguages(languages []LanguageProgress, progressType ProgressType, minPercent, limit int, pinned map[string]bool) []LanguageProgress {
+	prepared := make([]LanguageProgress, len(languages))
+	copy(prepared, languages)
+	if progressType == ProgressApproval {
+		for i := range prepared {
+			prepared[i].Percent = prepared[i].ApprovalPercent
+		}
+	}
+
+	var pinnedOut, rest []LanguageProgress
+	for _, lang := range prepared {
+		if len(pinned) > 0 && (pinned[strings.ToLower(lang.LanguageID)] || pinned[strings.ToLower(lang.LanguageName)]) {
+			pinnedOut = append(pinnedOut, lang)
+			continue
+		}
+		if lang.Percent >= minPercent {
+			rest = append(rest, lang)
+		}
+	}
+
+	sort.Slice(rest, func(i, j int) bool {
+		if rest[i].Percent != rest[j].Percent {
+			return rest[i].Percent > rest[j].Percent
+		}
+		return rest[i].LanguageName < rest[j].LanguageName
+	})
+	if limit > 0 && len(rest) > limit {
+		rest = rest[:limit]
+	}
+
+	return append(pinnedOut, rest...)
+}
+
+// parseLanguagePins splits the `languages` query param (comma-separated
+// codes or display names, e.g. "fr,de,Japanese") into a lowercased lookup
+// set for prepareTableLanguages. Capped at 50 entries — this pins languages
+// into the table, it isn't meant to be the primary way to select all of
+// them.
+func parseLanguagePins(raw string) map[string]bool {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make(map[string]bool, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p == "" {
+			continue
+		}
+		out[p] = true
+		if len(out) >= 50 {
+			break
+		}
+	}
+	return out
+}
+
+// pinnedCacheKeyFragment renders a pinned-language set into a stable,
+// order-independent string, so "?languages=fr,de" and "?languages=de, fr"
+// share one cache entry instead of fragmenting on formatting differences.
+func pinnedCacheKeyFragment(pinned map[string]bool) string {
+	if len(pinned) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(pinned))
+	for name := range pinned {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ",")
+}
+
 // renderTableSVG renders a horizontal progress bar per language.
 func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 	sorted := make([]LanguageProgress, len(languages))
@@ -202,14 +303,22 @@ type overallProgress struct {
 }
 
 // aggregateOverallProgress sums per-language totals into a single
-// project-wide figure for the given unit.
-func aggregateOverallProgress(languages []LanguageProgress, unit OverallUnit) overallProgress {
+// project-wide figure for the given unit and progress type (translated vs.
+// approved counts).
+func aggregateOverallProgress(languages []LanguageProgress, unit OverallUnit, progressType ProgressType) overallProgress {
 	var total, translated int
 	for _, lang := range languages {
-		if unit == OverallUnitStrings {
+		switch {
+		case unit == OverallUnitStrings && progressType == ProgressApproval:
+			total += lang.PhrasesTotal
+			translated += lang.PhrasesApproved
+		case unit == OverallUnitStrings:
 			total += lang.PhrasesTotal
 			translated += lang.PhrasesTranslated
-		} else {
+		case progressType == ProgressApproval:
+			total += lang.WordsTotal
+			translated += lang.WordsApproved
+		default:
 			total += lang.WordsTotal
 			translated += lang.WordsTranslated
 		}
@@ -261,8 +370,8 @@ const (
 
 // renderOverallCardSVG renders a wide summary card: label, big percentage,
 // optional fraction subtitle, and a thin progress bar.
-func renderOverallCardSVG(languages []LanguageProgress, unit OverallUnit, metric OverallMetric, colors embedColors) string {
-	prog := aggregateOverallProgress(languages, unit)
+func renderOverallCardSVG(languages []LanguageProgress, unit OverallUnit, metric OverallMetric, progressType ProgressType, colors embedColors) string {
+	prog := aggregateOverallProgress(languages, unit, progressType)
 	if prog.Total == 0 {
 		return emptyStateSVG(overallCardWidth, 60, "no translation data yet", colors)
 	}
@@ -271,8 +380,12 @@ func renderOverallCardSVG(languages []LanguageProgress, unit OverallUnit, metric
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
 		overallCardWidth, overallCardHeight, overallCardWidth, overallCardHeight)
 	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="%s" rx="10"/>`, overallCardWidth, overallCardHeight, colors.bg)
-	fmt.Fprintf(&b, `<text x="%d" y="30" fill="%s" font-size="12" font-weight="600" letter-spacing="0.06em">TRANSLATION PROGRESS</text>`,
-		overallCardPadding, colors.muted)
+	label := "TRANSLATION PROGRESS"
+	if progressType == ProgressApproval {
+		label = "APPROVAL PROGRESS"
+	}
+	fmt.Fprintf(&b, `<text x="%d" y="30" fill="%s" font-size="12" font-weight="600" letter-spacing="0.06em">%s</text>`,
+		overallCardPadding, colors.muted, label)
 
 	if metric == MetricFraction {
 		fmt.Fprintf(&b, `<text x="%d" y="82" fill="%s" font-size="34" font-weight="700">%s / %s %s</text>`,
@@ -305,8 +418,8 @@ const (
 
 // renderOverallCircleSVG renders a compact 120x120 progress ring showing
 // percentage only, for inline use where a card is too large.
-func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, colors embedColors) string {
-	prog := aggregateOverallProgress(languages, unit)
+func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, progressType ProgressType, colors embedColors) string {
+	prog := aggregateOverallProgress(languages, unit, progressType)
 	if prog.Total == 0 {
 		return emptyStateSVG(overallCircleSize, overallCircleSize, "no data", colors)
 	}

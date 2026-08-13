@@ -24,8 +24,8 @@ func generateDemoSVGs() {
 	}
 
 	table := renderTableSVG(demoLanguages, defaultEmbedColors)
-	overallCard := renderOverallCardSVG(demoLanguages, OverallUnitWords, MetricBoth, defaultEmbedColors)
-	overallCircle := renderOverallCircleSVG(demoLanguages, OverallUnitWords, defaultEmbedColors)
+	overallCard := renderOverallCardSVG(demoLanguages, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors)
+	overallCircle := renderOverallCircleSVG(demoLanguages, OverallUnitWords, ProgressTranslation, defaultEmbedColors)
 
 	// Avatar URLs point at pravatar.cc's generated-face placeholder service —
 	// consistent-per-ID stock faces, not real people, safe to bake into a

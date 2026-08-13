@@ -147,6 +147,28 @@
             <button type="button" data-embed-type="contributors" class="flex-1 rounded-lg px-3 py-2 text-sm font-medium border border-border transition-colors">Contributors</button>
           </div>
 
+          <div data-builder-table-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Progress</label>
+              <select data-builder-table-progress class="field-mono w-full">
+                <option value="translation">translation</option>
+                <option value="approval">approval</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Top N languages <span class="text-text-muted font-normal">(0 = all)</span></label>
+              <input type="number" min="0" max="200" value="0" data-builder-table-limit class="field-mono w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Minimum % <span class="text-text-muted font-normal">(0 = no filter)</span></label>
+              <input type="number" min="0" max="100" value="0" data-builder-table-minpercent class="field-mono w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Always show <span class="text-text-muted font-normal">(comma-separated codes or names, e.g. "fr,de")</span></label>
+              <input type="text" placeholder="fr,de" data-builder-table-languages class="field-mono w-full" />
+            </div>
+          </div>
+
           <div data-builder-contrib-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
             <div>
               <label class="flex items-center justify-between text-sm font-medium mb-1.5">
@@ -175,6 +197,13 @@
               <select data-builder-overall-variant class="field-mono w-full">
                 <option value="card">card</option>
                 <option value="circle">circle</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Progress</label>
+              <select data-builder-overall-progress class="field-mono w-full">
+                <option value="translation">translation</option>
+                <option value="approval">approval</option>
               </select>
             </div>
             <div>

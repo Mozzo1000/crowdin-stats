@@ -94,6 +94,40 @@ func ValidateProject(ctx context.Context, token, projectID string) error {
 	return nil
 }
 
+// ProjectSummary is the minimal project shape shown in the onboarding
+// project picker once a token has been entered.
+type ProjectSummary struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListProjects returns the projects a token has access to, for the
+// onboarding project picker. Granular-access PATs only ever see the
+// project(s) they were scoped to, so this list is naturally already
+// filtered to what the user is allowed to pick from.
+func ListProjects(ctx context.Context, token string) ([]ProjectSummary, error) {
+	client, err := crowdinClientFor(token)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := outboundLimiter.Wait(ctx); err != nil {
+		return nil, err
+	}
+	projects, _, err := client.Projects.List(ctx, &model.ProjectsListOptions{
+		ListOptions: model.ListOptions{Limit: 500},
+	})
+	if err != nil {
+		return nil, errors.New(friendlyAPIError(err))
+	}
+
+	out := make([]ProjectSummary, 0, len(projects))
+	for _, p := range projects {
+		out = append(out, ProjectSummary{ID: p.ID, Name: p.Name})
+	}
+	return out, nil
+}
+
 // fetchProjectOwnerID returns the Crowdin user ID of the project's owner,
 // used to filter them out of the contributors grid when hideOwner is set —
 // the owner shows up in the top-members report like any other translator,

@@ -17,9 +17,10 @@ import (
 )
 
 type server struct {
-	db        *sql.DB
-	masterKey [32]byte
-	noCache   bool
+	db          *sql.DB
+	masterKey   [32]byte
+	noCache     bool
+	noRateLimit bool
 }
 
 func main() {
@@ -29,6 +30,7 @@ func main() {
 	}
 
 	noCache := flag.Bool("no-cache", false, "disable the 12h embed cache — every embed request does a live Crowdin fetch (for testing)")
+	noRateLimit := flag.Bool("no-ratelimit", false, "disable rate limiting on /setup and /setup/projects (for local testing)")
 	flag.Parse()
 
 	masterKey, err := loadMasterKey()
@@ -52,9 +54,12 @@ func main() {
 	stopCleanup := startCleanupTicker(db, func() int64 { return time.Now().Unix() })
 	defer stopCleanup()
 
-	s := &server{db: db, masterKey: masterKey, noCache: *noCache}
+	s := &server{db: db, masterKey: masterKey, noCache: *noCache, noRateLimit: *noRateLimit}
 	if s.noCache {
 		slog.Warn("caching disabled — every embed request will hit Crowdin live (-no-cache)")
+	}
+	if s.noRateLimit {
+		slog.Warn("rate limiting disabled on /setup and /setup/projects (-no-ratelimit)")
 	}
 
 	mux := http.NewServeMux()
@@ -63,6 +68,7 @@ func main() {
 	mux.HandleFunc("GET /terms", serveStaticFile("static/terms.html"))
 	mux.HandleFunc("GET /privacy", serveStaticFile("static/privacy.html"))
 	mux.HandleFunc("POST /setup", s.handleSetup)
+	mux.HandleFunc("POST /setup/projects", s.handleListProjects)
 	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/overall.svg", s.handleOverallEmbed)
@@ -136,7 +142,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 
 	ip := clientIP(r)
-	if rateLimited(s.db, "setup:"+ip, 5, time.Hour) {
+	if !s.noRateLimit && rateLimited(s.db, "setup:"+ip, 5, time.Hour) {
 		http.Error(w, "too many setup attempts, try again later", http.StatusTooManyRequests)
 		return
 	}
@@ -190,6 +196,50 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+type listProjectsRequest struct {
+	Token string `json:"token"`
+}
+
+type listProjectsResponse struct {
+	Projects []ProjectSummary `json:"projects"`
+}
+
+// handleListProjects backs the onboarding project picker: given a token, it
+// returns the projects that token can see. Rate limited more generously than
+// /setup since the frontend calls it once per debounced pause in typing
+// rather than once per full form submission.
+func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
+
+	ip := clientIP(r)
+	if !s.noRateLimit && rateLimited(s.db, "setup-projects:"+ip, 20, time.Hour) {
+		http.Error(w, "too many attempts, try again later", http.StatusTooManyRequests)
+		return
+	}
+
+	var req listProjectsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "malformed request body", http.StatusBadRequest)
+		return
+	}
+	if req.Token == "" {
+		http.Error(w, "token is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	projects, err := ListProjects(ctx, req.Token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(listProjectsResponse{Projects: projects})
 }
 
 func hostBaseURL(r *http.Request) string {

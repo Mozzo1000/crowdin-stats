@@ -6,7 +6,6 @@ import (
 )
 
 type project struct {
-	publicID          string
 	crowdinProjectID  string
 	ciphertext, nonce []byte
 	revoked           bool
@@ -16,9 +15,9 @@ func getProject(db *sql.DB, publicID string) (project, error) {
 	var p project
 	var revoked int
 	err := db.QueryRow(
-		`SELECT public_id, crowdin_project_id, ciphertext, nonce, revoked FROM projects WHERE public_id = ?`,
+		`SELECT crowdin_project_id, ciphertext, nonce, revoked FROM projects WHERE public_id = ?`,
 		publicID,
-	).Scan(&p.publicID, &p.crowdinProjectID, &p.ciphertext, &p.nonce, &revoked)
+	).Scan(&p.crowdinProjectID, &p.ciphertext, &p.nonce, &revoked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return project{}, errProjectNotFound
 	}

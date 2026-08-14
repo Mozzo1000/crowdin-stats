@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS projects (
     crowdin_project_id  TEXT NOT NULL,
     ciphertext          BLOB NOT NULL,
     nonce               BLOB NOT NULL,
-    key_version         INTEGER NOT NULL DEFAULT 1,
+    key_version         INTEGER NOT NULL DEFAULT 1, -- always 1 today; reserved for a future encryption key rotation (see SECURITY.md), not read back yet
     created_at          INTEGER NOT NULL,
     revoked             INTEGER NOT NULL DEFAULT 0,
     revoke_token_hash   TEXT

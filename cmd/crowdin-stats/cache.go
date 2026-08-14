@@ -17,14 +17,13 @@ var refreshGroup singleflight.Group
 
 type cacheEntry struct {
 	svg       string
-	cachedAt  int64
 	expiresAt int64
 }
 
 func getCache(db *sql.DB, key string) (cacheEntry, bool) {
 	var e cacheEntry
-	err := db.QueryRow(`SELECT svg, cached_at, expires_at FROM cache WHERE key = ?`, key).
-		Scan(&e.svg, &e.cachedAt, &e.expiresAt)
+	err := db.QueryRow(`SELECT svg, expires_at FROM cache WHERE key = ?`, key).
+		Scan(&e.svg, &e.expiresAt)
 	if err != nil {
 		return cacheEntry{}, false
 	}

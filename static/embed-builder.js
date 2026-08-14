@@ -15,6 +15,32 @@
 (function () {
   'use strict';
 
+  // Falls back to a hidden textarea + execCommand when the async Clipboard
+  // API is unavailable (non-secure context) or denied (permission prompt
+  // rejected), so callers can still tell success from failure.
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(
+        function () { return true; },
+        function () { return false; }
+      );
+    }
+    try {
+      var textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return Promise.resolve(ok);
+    } catch (e) {
+      return Promise.resolve(false);
+    }
+  }
+
   // Mirrors render.go's defaultEmbedColors / darkEmbedColors — the site's
   // own light- and dark-mode CSS tokens (input.css :root / :root.dark).
   var DEFAULT_COLORS = { bg: '#ffffff', text: '#1f2a33', muted: '#64748b', accent: '#2f6fed', border: '#8a90a0' };
@@ -725,15 +751,16 @@
       if (mode === 'demo') copyBtn.textContent = 'Copy template';
       copyBtn.addEventListener('click', function () {
         var text = urlEl ? urlEl.textContent : '';
-        navigator.clipboard.writeText(text);
         var original = copyBtn.textContent;
-        copyBtn.textContent = 'Copied!';
-        setTimeout(function () { copyBtn.textContent = original; }, 1500);
+        copyToClipboard(text).then(function (ok) {
+          copyBtn.textContent = ok ? 'Copied!' : 'Copy failed';
+          setTimeout(function () { copyBtn.textContent = original; }, 1500);
+        });
       });
     }
 
     render();
   }
 
-  window.CrowdinStatsEmbedBuilder = { init: init };
+  window.CrowdinStatsEmbedBuilder = { init: init, copyToClipboard: copyToClipboard };
 })();

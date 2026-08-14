@@ -1,4 +1,4 @@
-# crowdin-stats
+# Crowdin Stats
 
 Generates live, embeddable SVG images (translation progress table +
 contributor grid) for Crowdin projects, for use in GitHub READMEs.

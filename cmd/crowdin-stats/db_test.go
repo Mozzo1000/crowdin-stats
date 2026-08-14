@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -99,6 +101,33 @@ func TestRateLimited(t *testing.T) {
 	}
 	if retryAfter <= 0 || retryAfter > time.Hour {
 		t.Fatalf("expected retryAfter within (0, 1h], got %v", retryAfter)
+	}
+}
+
+// TestRateLimitedConcurrentAtBoundary guards against the check-then-update
+// race: firing many concurrent requests at a bucket must admit exactly
+// `limit` of them, never more, even though the DB connection is released
+// back to the pool between logically-related statements.
+func TestRateLimitedConcurrentAtBoundary(t *testing.T) {
+	db := newTestDB(t)
+	const limit = 10
+	const attempts = 50
+
+	var admitted int64
+	var wg sync.WaitGroup
+	wg.Add(attempts)
+	for i := 0; i < attempts; i++ {
+		go func() {
+			defer wg.Done()
+			if limited, _ := rateLimited(db, "race", limit, time.Hour); !limited {
+				atomic.AddInt64(&admitted, 1)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if admitted != limit {
+		t.Fatalf("expected exactly %d admitted requests out of %d concurrent attempts, got %d", limit, attempts, admitted)
 	}
 }
 

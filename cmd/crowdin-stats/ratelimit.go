@@ -34,23 +34,34 @@ func retryAfterFor(windowStart int64, window time.Duration) time.Duration {
 	return retryAfter
 }
 
-// rateLimited checks and increments a fixed-window counter for bucketKey.
-// Returns true if the caller has exceeded limit requests within window,
-// along with how long until the window resets and a new request would be
-// admitted — callers surface that to the user instead of a bare "try again
-// later" (see main.go handleSetup).
+// rateLimited atomically checks and increments a fixed-window counter for
+// bucketKey in a single statement (a separate SELECT-then-UPDATE would let
+// two concurrent requests both read count == limit-1 and both proceed, even
+// with the DB's single connection — that connection is released back to the
+// pool between statements, so nothing holds it across the pair). Returns
+// true if the caller has exceeded limit requests within window, along with
+// how long until the window resets and a new request would be admitted —
+// callers surface that to the user instead of a bare "try again later" (see
+// main.go handleSetup).
 func rateLimited(db *sql.DB, bucketKey string, limit int, window time.Duration) (bool, time.Duration) {
-	count, windowStart, live := windowState(db, bucketKey, window)
-	if !live {
-		db.Exec(`INSERT INTO rate_limits (bucket_key, count, window_start) VALUES (?, 1, ?)
-                 ON CONFLICT(bucket_key) DO UPDATE SET count=1, window_start=excluded.window_start`,
-			bucketKey, time.Now().Unix())
+	now := time.Now().Unix()
+	cutoff := now - int64(window.Seconds())
+	var count int
+	var windowStart int64
+	err := db.QueryRow(`
+        INSERT INTO rate_limits (bucket_key, count, window_start) VALUES (?, 1, ?)
+        ON CONFLICT(bucket_key) DO UPDATE SET
+            count = CASE WHEN rate_limits.window_start < ? THEN 1 ELSE rate_limits.count + 1 END,
+            window_start = CASE WHEN rate_limits.window_start < ? THEN ? ELSE rate_limits.window_start END
+        RETURNING count, window_start`,
+		bucketKey, now, cutoff, cutoff, now,
+	).Scan(&count, &windowStart)
+	if err != nil {
 		return false, 0
 	}
-	if count >= limit {
+	if count > limit {
 		return true, retryAfterFor(windowStart, window)
 	}
-	db.Exec(`UPDATE rate_limits SET count = count + 1 WHERE bucket_key = ?`, bucketKey)
 	return false, 0
 }
 

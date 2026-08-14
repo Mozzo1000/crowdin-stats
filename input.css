@@ -86,7 +86,7 @@
   }
 
   .field-mono {
-    @apply font-mono text-sm bg-bg-subtle border border-border rounded-lg px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent;
+    @apply font-mono text-sm bg-bg-subtle border border-border rounded-lg px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent;
   }
 
   /* A color <input type="color"> swatch and its hex <input type="text">

@@ -29,6 +29,7 @@ npx tailwindcss -i input.css -o static/app.css --minify
 ```bash
 export MASTER_KEY=$(openssl rand -base64 32)
 export DB_PATH=./data/db.sqlite
+export HOST=localhost:8080
 go run ./cmd/crowdin-stats
 
 # add -no-cache to bypass the 12h embed cache entirely — every embed

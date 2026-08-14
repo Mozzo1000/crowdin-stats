@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -68,24 +69,29 @@ func crowdinRequestSetup(ctx context.Context, token, projectID string) (*crowdin
 }
 
 // friendlyAPIError turns a Crowdin client error into a short, specific
-// message safe to show to end users during onboarding.
-func friendlyAPIError(err error) string {
+// error safe to show to end users during onboarding. Known failure modes map
+// to the errCrowdin* sentinels so callers can branch on them with errors.Is;
+// anything unrecognized gets a generic message instead of the raw Go/HTTP
+// error text, which can leak internal detail (URLs, headers) to a
+// non-technical user. The raw error is still logged here for debugging.
+func friendlyAPIError(err error) error {
 	var errResp *model.ErrorResponse
 	if errors.As(err, &errResp) {
 		switch errResp.Response.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:
-			return "token invalid or lacks access to this project"
+			return errCrowdinAuthInvalid
 		case http.StatusNotFound:
-			return "project not found — check the project ID"
+			return errCrowdinProjectNotFound
 		case http.StatusTooManyRequests:
-			return "Crowdin rate limit hit, try again shortly"
+			return fmt.Errorf("%w: Crowdin rate limit hit, try again shortly", errRateLimited)
 		}
 	}
 	var valErr *model.ValidationErrorResponse
 	if errors.As(err, &valErr) {
-		return "invalid request: " + valErr.Error()
+		return fmt.Errorf("invalid request: %s", valErr.Error())
 	}
-	return "could not reach Crowdin: " + err.Error()
+	slog.Warn("unrecognized crowdin api error", "error", err)
+	return errors.New("could not reach Crowdin, please try again")
 }
 
 // ValidateProject confirms a token is valid and scoped to the given project.
@@ -97,7 +103,7 @@ func ValidateProject(ctx context.Context, token, projectID string) error {
 
 	_, _, err = client.Projects.Get(ctx, id)
 	if err != nil {
-		return errors.New(friendlyAPIError(err))
+		return friendlyAPIError(err)
 	}
 	return nil
 }
@@ -126,7 +132,7 @@ func ListProjects(ctx context.Context, token string) ([]ProjectSummary, error) {
 		ListOptions: model.ListOptions{Limit: 500},
 	})
 	if err != nil {
-		return nil, errors.New(friendlyAPIError(err))
+		return nil, friendlyAPIError(err)
 	}
 
 	out := make([]ProjectSummary, 0, len(projects))
@@ -148,7 +154,7 @@ func fetchProjectOwnerID(ctx context.Context, token, projectID string) (int64, e
 
 	project, _, err := client.Projects.Get(ctx, id)
 	if err != nil {
-		return 0, fmt.Errorf("fetch project owner: %s", friendlyAPIError(err))
+		return 0, fmt.Errorf("fetch project owner: %w", friendlyAPIError(err))
 	}
 	return int64(project.UserID), nil
 }
@@ -162,7 +168,7 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 
 	progress, _, err := client.TranslationStatus.GetProjectProgress(ctx, id, nil)
 	if err != nil {
-		return nil, fmt.Errorf("fetch translation progress: %s", friendlyAPIError(err))
+		return nil, fmt.Errorf("fetch translation progress: %w", friendlyAPIError(err))
 	}
 
 	out := make([]LanguageProgress, 0, len(progress))
@@ -280,7 +286,7 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("generate top-members report: %s", friendlyAPIError(err))
+		return nil, fmt.Errorf("generate top-members report: %w", friendlyAPIError(err))
 	}
 
 	reportID := status.Identifier
@@ -300,7 +306,7 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		}
 		status, _, err = client.Reports.CheckStatus(ctx, id, reportID)
 		if err != nil {
-			return nil, fmt.Errorf("check report status: %s", friendlyAPIError(err))
+			return nil, fmt.Errorf("check report status: %w", friendlyAPIError(err))
 		}
 		if status.Status == "failed" {
 			return nil, errors.New("Crowdin report generation failed")
@@ -312,7 +318,7 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	}
 	link, _, err := client.Reports.Download(ctx, id, reportID)
 	if err != nil {
-		return nil, fmt.Errorf("get report download link: %s", friendlyAPIError(err))
+		return nil, fmt.Errorf("get report download link: %w", friendlyAPIError(err))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link.URL, nil)

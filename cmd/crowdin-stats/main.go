@@ -136,9 +136,12 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 
 	ip := clientIP(r)
-	if !s.noRateLimit && rateLimited(s.db, "setup:"+ip, 5, time.Hour) {
-		http.Error(w, "too many setup attempts, try again later", http.StatusTooManyRequests)
-		return
+	if !s.noRateLimit {
+		if limited, retryAfter := rateLimited(s.db, "setup:"+ip, 5, time.Hour); limited {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			http.Error(w, "too many setup attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
+			return
+		}
 	}
 
 	var req setupRequest
@@ -146,14 +149,37 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "malformed request body", http.StatusBadRequest)
 		return
 	}
-	req.CrowdinProjectID = trimToDigits(req.CrowdinProjectID)
-	if req.CrowdinProjectID == "" || req.Token == "" {
+	rawProjectID := req.CrowdinProjectID
+	req.CrowdinProjectID = trimToDigits(rawProjectID)
+	switch {
+	case rawProjectID == "" && req.Token == "":
 		http.Error(w, "crowdin_project_id and token are required", http.StatusBadRequest)
+		return
+	case rawProjectID == "":
+		http.Error(w, "crowdin_project_id is required", http.StatusBadRequest)
+		return
+	case req.Token == "":
+		http.Error(w, "token is required", http.StatusBadRequest)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
+
+	if req.CrowdinProjectID == "" {
+		// rawProjectID was non-empty but contained no digits at all — the
+		// user pasted something, just not a project ID or project URL. Still
+		// check the token here: if it's also invalid, say so instead of
+		// implying the token is fine and only the project ID needs fixing —
+		// otherwise the user "fixes" the ID and immediately hits a second,
+		// previously-hidden error on the token.
+		if _, err := ListProjects(ctx, req.Token); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "couldn't find a project ID in that — paste the numeric project ID or the full Crowdin project URL", http.StatusBadRequest)
+		return
+	}
 
 	if err := ValidateProject(ctx, req.Token, req.CrowdinProjectID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -208,9 +234,12 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 
 	ip := clientIP(r)
-	if !s.noRateLimit && rateLimited(s.db, "setup-projects:"+ip, 20, time.Hour) {
-		http.Error(w, "too many attempts, try again later", http.StatusTooManyRequests)
-		return
+	if !s.noRateLimit {
+		if limited, retryAfter := rateLimited(s.db, "setup-projects:"+ip, 20, time.Hour); limited {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			http.Error(w, "too many attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
+			return
+		}
 	}
 
 	var req listProjectsRequest
@@ -435,12 +464,19 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 // and a non-image response renders as a broken image icon with no
 // explanation. The real error is still logged server-side.
 func (s *server) handleEmbedError(w http.ResponseWriter, err error, colors embedColors) {
-	if errors.Is(err, errRateLimited) {
+	switch {
+	case errors.Is(err, errRateLimited):
 		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly", colors))
-		return
+	case errors.Is(err, errCrowdinAuthInvalid):
+		slog.Warn("embed render failed: token invalid", "error", err)
+		writeSVG(w, emptyStateSVG(320, 60, "token invalid — re-run setup", colors))
+	case errors.Is(err, errCrowdinProjectNotFound):
+		slog.Warn("embed render failed: project not found", "error", err)
+		writeSVG(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors))
+	default:
+		slog.Warn("embed render failed", "error", err)
+		writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
 	}
-	slog.Warn("embed render failed", "error", err)
-	writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
 }
 
 func (s *server) renderTable(p project, progressType ProgressType, limit, minPercent int, pinned map[string]bool, colors embedColors) fetchFunc {

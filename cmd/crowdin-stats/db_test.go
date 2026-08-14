@@ -54,12 +54,16 @@ func TestGetProjectRevoked(t *testing.T) {
 func TestRateLimited(t *testing.T) {
 	db := newTestDB(t)
 	for i := 0; i < 3; i++ {
-		if rateLimited(db, "bucket", 3, time.Hour) {
+		if limited, _ := rateLimited(db, "bucket", 3, time.Hour); limited {
 			t.Fatalf("unexpected rate limit at request %d", i)
 		}
 	}
-	if !rateLimited(db, "bucket", 3, time.Hour) {
+	limited, retryAfter := rateLimited(db, "bucket", 3, time.Hour)
+	if !limited {
 		t.Fatalf("expected rate limit after exceeding threshold")
+	}
+	if retryAfter <= 0 || retryAfter > time.Hour {
+		t.Fatalf("expected retryAfter within (0, 1h], got %v", retryAfter)
 	}
 }
 

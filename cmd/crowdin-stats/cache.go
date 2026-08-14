@@ -56,7 +56,7 @@ type fetchFunc func(ctx context.Context) (string, error)
 // against real Crowdin data without waiting out the 12h TTL.
 func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, fetch fetchFunc, disabled bool) (string, error) {
 	if disabled {
-		if rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour) {
+		if limited, _ := rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour); limited {
 			return "", errRateLimited
 		}
 		return fetch(ctx)
@@ -71,7 +71,7 @@ func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, f
 
 	if found {
 		// Stale: serve what we have, refresh in the background if allowed.
-		if !rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour) {
+		if limited, _ := rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour); !limited {
 			go func() {
 				bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 				defer cancel()
@@ -90,7 +90,7 @@ func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, f
 	}
 
 	// Cold cache: block on a live fetch, still rate-limited.
-	if rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour) {
+	if limited, _ := rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour); limited {
 		return "", errRateLimited
 	}
 

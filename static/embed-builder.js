@@ -12,7 +12,10 @@
 (function () {
   'use strict';
 
-  var DEFAULT_COLORS = { bg: '#12161f', text: '#e8eaed', muted: '#8b93a3', accent: '#7dd3a8', border: '#232834' };
+  // Mirrors render.go's defaultEmbedColors / darkEmbedColors — the site's
+  // own light- and dark-mode CSS tokens (input.css :root / :root.dark).
+  var DEFAULT_COLORS = { bg: '#ffffff', text: '#1f2a33', muted: '#64748b', accent: '#2f6fed', border: '#e2e8f0' };
+  var DARK_COLORS = { bg: '#12161d', text: '#edeff3', muted: '#97a2b4', accent: '#5b8dff', border: '#2b3340' };
 
   var DEMO_LANGUAGES = [
     { id: 'fr', name: 'French', percent: 96, approvalPercent: 80, wordsTotal: 850, wordsTranslated: 816, wordsApproved: 680, phrasesTotal: 620, phrasesTranslated: 595, phrasesApproved: 496 },
@@ -124,7 +127,7 @@
 
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + TABLE.width + '" height="' + height +
       '" viewBox="0 0 ' + TABLE.width + ' ' + height + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
-    out += '<rect width="' + TABLE.width + '" height="' + height + '" fill="' + colors.bg + '" rx="8"/>';
+    out += '<rect x="0.5" y="0.5" width="' + (TABLE.width - 1) + '" height="' + (height - 1) + '" rx="8" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
 
     sorted.forEach(function (lang, i) {
       var y = TABLE.paddingTop + i * TABLE.rowHeight;
@@ -161,7 +164,7 @@
     var height = GRID.paddingY * 2 + cell * rows - GRID.avatarGap;
 
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
-    out += '<rect width="' + width + '" height="' + height + '" fill="' + colors.bg + '" rx="8"/>';
+    out += '<rect x="0.5" y="0.5" width="' + (width - 1) + '" height="' + (height - 1) + '" rx="8" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
 
     sorted.forEach(function (c, i) {
       var col = i % GRID.cols;
@@ -229,7 +232,7 @@
     var label = progress === 'approval' ? 'APPROVAL PROGRESS' : 'TRANSLATION PROGRESS';
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CARD.width + '" height="' + CARD.height +
       '" viewBox="0 0 ' + CARD.width + ' ' + CARD.height + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
-    out += '<rect width="' + CARD.width + '" height="' + CARD.height + '" fill="' + colors.bg + '" rx="10"/>';
+    out += '<rect x="0.5" y="0.5" width="' + (CARD.width - 1) + '" height="' + (CARD.height - 1) + '" rx="10" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
     out += '<text x="' + CARD.padding + '" y="30" fill="' + colors.muted + '" font-size="12" font-weight="600" letter-spacing="0.06em">' + label + '</text>';
 
     if (metric === 'fraction') {
@@ -265,7 +268,7 @@
 
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CIRCLE.size + '" height="' + CIRCLE.size +
       '" viewBox="0 0 ' + CIRCLE.size + ' ' + CIRCLE.size + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
-    out += '<rect width="' + CIRCLE.size + '" height="' + CIRCLE.size + '" fill="' + colors.bg + '" rx="10"/>';
+    out += '<rect x="0.5" y="0.5" width="' + (CIRCLE.size - 1) + '" height="' + (CIRCLE.size - 1) + '" rx="10" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
     out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.border + '" stroke-width="10"/>';
     out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.accent +
       '" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + filled.toFixed(2) + ' ' + circumference.toFixed(2) +
@@ -279,7 +282,7 @@
   function emptyStateSVG(width, height, message, colors) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height +
       '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">' +
-      '<rect width="' + width + '" height="' + height + '" fill="' + colors.bg + '" rx="8"/>' +
+      '<rect x="0.5" y="0.5" width="' + (width - 1) + '" height="' + (height - 1) + '" rx="8" fill="' + colors.bg + '" stroke="' + colors.border + '"/>' +
       '<text x="' + (width / 2) + '" y="' + (height / 2) + '" fill="' + colors.muted + '" font-size="12" text-anchor="middle" dominant-baseline="middle">' + esc(message) + '</text>' +
       '</svg>';
   }
@@ -305,9 +308,11 @@
       if (state.overallVariant !== 'card') params.set('variant', state.overallVariant);
       if (state.overallVariant !== 'circle' && state.overallMetric !== 'both') params.set('metric', state.overallMetric);
     }
+    if (state.theme === 'dark') params.set('theme', 'dark');
+    var base = state.theme === 'dark' ? DARK_COLORS : DEFAULT_COLORS;
     ['bg', 'text', 'muted', 'accent', 'border'].forEach(function (key) {
       var hex = state.colors[key].replace('#', '');
-      if (hex.toLowerCase() !== DEFAULT_COLORS[key].replace('#', '')) {
+      if (hex.toLowerCase() !== base[key].replace('#', '')) {
         params.set(key, hex);
       }
     });
@@ -333,6 +338,7 @@
       overallProgress: 'translation',
       overallMetric: 'both',
       overallVariant: 'card',
+      theme: 'light',
       colors: Object.assign({}, DEFAULT_COLORS),
     };
 
@@ -352,6 +358,7 @@
     var overallProgressSelect = root.querySelector('[data-builder-overall-progress]');
     var overallMetricSelect = root.querySelector('[data-builder-overall-metric]');
     var overallVariantSelect = root.querySelector('[data-builder-overall-variant]');
+    var themeButtons = root.querySelectorAll('[data-builder-theme]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
     var previewEl = root.querySelector('[data-builder-preview]');
     var previewImg = root.querySelector('[data-builder-preview-img]');
@@ -376,6 +383,13 @@
       if (tableControls) {
         tableControls.classList.toggle('hidden', state.type !== 'table');
       }
+      themeButtons.forEach(function (btn) {
+        var active = btn.getAttribute('data-builder-theme') === state.theme;
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        btn.classList.toggle('bg-accent', active);
+        btn.classList.toggle('text-accent-contrast', active);
+        btn.classList.toggle('text-text-muted', !active);
+      });
 
       var qs = buildQueryString(state.type, state);
       var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
@@ -479,6 +493,17 @@
         render();
       });
     }
+    themeButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.theme = btn.getAttribute('data-builder-theme');
+        state.colors = Object.assign({}, state.theme === 'dark' ? DARK_COLORS : DEFAULT_COLORS);
+        colorInputs.forEach(function (input) {
+          input.value = state.colors[input.getAttribute('data-builder-color')];
+        });
+        render();
+      });
+    });
+
     colorInputs.forEach(function (input) {
       var key = input.getAttribute('data-builder-color');
       input.value = state.colors[key];

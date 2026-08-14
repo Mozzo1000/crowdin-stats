@@ -265,15 +265,20 @@ func trimToDigits(s string) string {
 }
 
 // parseEmbedColors reads the shared bg/text/muted/accent/border query
-// params, falling back to defaultEmbedColors per-field for anything
-// missing or not a valid 3- or 6-digit hex color.
+// params, falling back per-field to whichever base palette `theme` selects
+// (light, the default, or dark) for anything missing or not a valid 3- or
+// 6-digit hex color.
 func parseEmbedColors(q url.Values) embedColors {
+	base := defaultEmbedColors
+	if q.Get("theme") == "dark" {
+		base = darkEmbedColors
+	}
 	return embedColors{
-		bg:     sanitizeHexColor(q.Get("bg"), defaultEmbedColors.bg),
-		text:   sanitizeHexColor(q.Get("text"), defaultEmbedColors.text),
-		muted:  sanitizeHexColor(q.Get("muted"), defaultEmbedColors.muted),
-		accent: sanitizeHexColor(q.Get("accent"), defaultEmbedColors.accent),
-		border: sanitizeHexColor(q.Get("border"), defaultEmbedColors.border),
+		bg:     sanitizeHexColor(q.Get("bg"), base.bg),
+		text:   sanitizeHexColor(q.Get("text"), base.text),
+		muted:  sanitizeHexColor(q.Get("muted"), base.muted),
+		accent: sanitizeHexColor(q.Get("accent"), base.accent),
+		border: sanitizeHexColor(q.Get("border"), base.border),
 	}
 }
 

@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-var errProjectNotFound = errors.New("project not found")
-
 type project struct {
 	publicID          string
 	crowdinProjectID  string

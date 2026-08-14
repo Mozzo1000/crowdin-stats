@@ -8,8 +8,8 @@
 
     <div data-builder-table-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
       <div>
-        <label class="block text-sm font-medium mb-1.5">Progress</label>
-        <select data-builder-table-progress class="field-mono w-full">
+        <label for="builder-table-progress" class="block text-sm font-medium mb-1.5">Progress</label>
+        <select id="builder-table-progress" data-builder-table-progress class="field-mono w-full">
           <option value="translation">translation</option>
           <option value="approval">approval</option>
         </select>
@@ -30,15 +30,15 @@
 
     <div data-builder-contrib-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
       <div>
-        <label class="flex items-center justify-between text-sm font-medium mb-1.5">
+        <label for="builder-limit" class="flex items-center justify-between text-sm font-medium mb-1.5">
           <span>Limit</span>
           <span data-builder-limit-value aria-live="polite" class="text-text-muted font-mono">30</span>
         </label>
-        <input type="range" min="1" max="100" value="30" data-builder-limit class="w-full accent-accent" />
+        <input id="builder-limit" type="range" min="1" max="100" value="30" data-builder-limit class="w-full accent-accent" />
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1.5">Unit</label>
-        <select data-builder-unit class="field-mono w-full">
+        <label for="builder-unit" class="block text-sm font-medium mb-1.5">Unit</label>
+        <select id="builder-unit" data-builder-unit class="field-mono w-full">
           <option value="words">words</option>
           <option value="strings">strings</option>
           <option value="characters">characters</option>
@@ -52,29 +52,29 @@
 
     <div data-builder-overall-controls class="hidden space-y-4 mb-5 pb-5 border-b border-border">
       <div>
-        <label class="block text-sm font-medium mb-1.5">Variant</label>
-        <select data-builder-overall-variant class="field-mono w-full">
+        <label for="builder-overall-variant" class="block text-sm font-medium mb-1.5">Variant</label>
+        <select id="builder-overall-variant" data-builder-overall-variant class="field-mono w-full">
           <option value="card">card</option>
           <option value="circle">circle</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1.5">Progress</label>
-        <select data-builder-overall-progress class="field-mono w-full">
+        <label for="builder-overall-progress" class="block text-sm font-medium mb-1.5">Progress</label>
+        <select id="builder-overall-progress" data-builder-overall-progress class="field-mono w-full">
           <option value="translation">translation</option>
           <option value="approval">approval</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1.5">Unit</label>
-        <select data-builder-overall-unit class="field-mono w-full">
+        <label for="builder-overall-unit" class="block text-sm font-medium mb-1.5">Unit</label>
+        <select id="builder-overall-unit" data-builder-overall-unit class="field-mono w-full">
           <option value="words">words</option>
           <option value="strings">strings</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1.5">Metric <span class="text-text-muted font-normal">(card only)</span></label>
-        <select data-builder-overall-metric class="field-mono w-full">
+        <label for="builder-overall-metric" class="block text-sm font-medium mb-1.5">Metric <span class="text-text-muted font-normal">(card only)</span></label>
+        <select id="builder-overall-metric" data-builder-overall-metric class="field-mono w-full">
           <option value="both">both</option>
           <option value="percentage">percentage</option>
           <option value="fraction">fraction</option>

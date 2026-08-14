@@ -53,7 +53,7 @@ func generateDemoSVGs() {
 		{Username: "tomas", FullName: "Tomas Novak", Amount: 940, AvatarURL: "https://i.pravatar.cc/150?img=53"},
 		{Username: "yui", FullName: "Yui Tanaka", Amount: 810, AvatarURL: "https://i.pravatar.cc/150?img=43"},
 		{Username: "ines", FullName: "Ines Costa", Amount: 700},
-	})
+	}, 10)
 	contributors := renderContributorsSVG(demoContributors, 10, defaultEmbedColors)
 	contributorsDark := renderContributorsSVG(demoContributors, 10, darkEmbedColors)
 

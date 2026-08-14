@@ -30,10 +30,10 @@ const (
 // embedAvatarsAsDataURIs fetches each contributor's avatar server-side and
 // replaces AvatarURL with a data: URI, or clears it on any failure so
 // renderContributorsSVG falls back to its initials circle. Only the
-// highest-ranked maxAvatarEmbeds contributors are fetched, to bound cost —
-// renderContributorsSVG's own limit/sort produces the same ordering, so
-// this doesn't change which avatars end up visible.
-func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor) []Contributor {
+// highest-ranked contributors, up to min(limit, maxAvatarEmbeds), are
+// fetched, to bound cost — renderContributorsSVG's own limit/sort produces
+// the same ordering, so this doesn't change which avatars end up visible.
+func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor, limit int) []Contributor {
 	sorted := make([]Contributor, len(contributors))
 	copy(sorted, contributors)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -43,10 +43,14 @@ func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor) []C
 		return sorted[i].Username < sorted[j].Username
 	})
 
+	if limit <= 0 || limit > maxAvatarEmbeds {
+		limit = maxAvatarEmbeds
+	}
+
 	sem := make(chan struct{}, avatarFetchParallel)
 	var wg sync.WaitGroup
 	for i := range sorted {
-		if i >= maxAvatarEmbeds || sorted[i].AvatarURL == "" {
+		if i >= limit || sorted[i].AvatarURL == "" {
 			sorted[i].AvatarURL = ""
 			continue
 		}

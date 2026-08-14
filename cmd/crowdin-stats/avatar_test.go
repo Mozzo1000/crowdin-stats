@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -53,7 +54,7 @@ func TestEmbedAvatarsAsDataURIs(t *testing.T) {
 		{Username: "c", Amount: 1, AvatarURL: "not-even-a-url"},
 	}
 
-	out := embedAvatarsAsDataURIs(context.Background(), contributors)
+	out := embedAvatarsAsDataURIs(context.Background(), contributors, 0)
 	if len(out) != len(contributors) {
 		t.Fatalf("expected %d contributors, got %d", len(contributors), len(out))
 	}
@@ -65,6 +66,45 @@ func TestEmbedAvatarsAsDataURIs(t *testing.T) {
 	// Sorted by Amount descending: a(10), b(5), c(1).
 	if out[0].Username != "a" || out[1].Username != "b" || out[2].Username != "c" {
 		t.Fatalf("unexpected order: %v", []string{out[0].Username, out[1].Username, out[2].Username})
+	}
+}
+
+func TestEmbedAvatarsAsDataURIsRespectsLimit(t *testing.T) {
+	var fetched int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&fetched, 1)
+		w.Header().Set("Content-Type", "image/png")
+		w.Write([]byte("fake-png-bytes"))
+	}))
+	defer srv.Close()
+
+	client := srv.Client()
+	orig := http.DefaultClient
+	http.DefaultClient = client
+	defer func() { http.DefaultClient = orig }()
+
+	contributors := make([]Contributor, 10)
+	for i := range contributors {
+		contributors[i] = Contributor{
+			Username:  string(rune('a' + i)),
+			Amount:    int64(10 - i),
+			AvatarURL: srv.URL + "/avatar.png",
+		}
+	}
+
+	const limit = 3
+	out := embedAvatarsAsDataURIs(context.Background(), contributors, limit)
+
+	if got := atomic.LoadInt32(&fetched); got != limit {
+		t.Fatalf("expected exactly %d avatar fetches, got %d", limit, got)
+	}
+	for i, c := range out {
+		if i < limit && c.AvatarURL == "" {
+			t.Fatalf("expected top %d contributors to have avatars embedded, %s did not", limit, c.Username)
+		}
+		if i >= limit && c.AvatarURL != "" {
+			t.Fatalf("expected contributors beyond limit %d to have no avatar, %s did", limit, c.Username)
+		}
 	}
 }
 

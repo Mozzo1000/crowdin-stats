@@ -259,7 +259,10 @@ func (u ReportUnit) toCrowdinUnit() model.ReportUnit {
 // FetchTopMembers runs the async generate -> poll -> download flow for the
 // "top-members" report and returns contributors ranked by the given unit.
 // When hideOwner is set, the project owner is excluded from the result.
-func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUnit, hideOwner bool) ([]Contributor, error) {
+// avatarLimit bounds how many avatars are fetched and embedded (see
+// embedAvatarsAsDataURIs); pass the same limit the caller will render with,
+// so a small `limit` embed doesn't pay to download avatars it will discard.
+func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUnit, hideOwner bool, avatarLimit int) ([]Contributor, error) {
 	// Kicked off in parallel with report generation/polling below, so
 	// hideOwner doesn't add its own round trip to the embed's latency.
 	var ownerID int64
@@ -361,5 +364,5 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 			Amount:    int64(row.Translated) + int64(row.Approved),
 		})
 	}
-	return embedAvatarsAsDataURIs(ctx, out), nil
+	return embedAvatarsAsDataURIs(ctx, out, avatarLimit), nil
 }

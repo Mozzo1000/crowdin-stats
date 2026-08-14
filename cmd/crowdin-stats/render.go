@@ -67,6 +67,22 @@ func sanitizeHexColor(raw, fallback string) string {
 	return fallback
 }
 
+// sanitizeBgOrBorderColor extends sanitizeHexColor with the `transparent`
+// keyword, for the two fields (bg, border) where an embed dropped into a
+// README on a non-white page benefits from blending in rather than showing
+// a hard-edged rect (see issue #68). Normalized to SVG's "none" paint
+// keyword rather than the CSS "transparent" color: fill="none" has been
+// unambiguously supported since SVG 1.1, with no alpha-compositing
+// questions across renderers. text/muted/accent stay hex-only via
+// sanitizeHexColor — they're drawn as text/strokes, where "no paint" isn't
+// a meaningful choice.
+func sanitizeBgOrBorderColor(raw, fallback string) string {
+	if strings.EqualFold(strings.TrimSpace(raw), "transparent") {
+		return "none"
+	}
+	return sanitizeHexColor(raw, fallback)
+}
+
 // mixHex blends two hex colors, weighting b by t (0..1), and returns a
 // 6-digit hex color. Used to derive the fallback-avatar fill from bg/text
 // rather than reusing the (now higher-contrast, more prominent) border
@@ -81,11 +97,17 @@ func mixHex(a, b string, t float64) string {
 }
 
 // hexChannels parses a 3- or 6-digit hex color (with or without leading '#')
-// into its 0-255 RGB channels.
+// into its 0-255 RGB channels. Non-hex input — namely "none", which bg/
+// border can now hold (see sanitizeBgOrBorderColor) — has no RGB value to
+// derive, so it falls back to a neutral mid-gray rather than parsing
+// garbage or indexing out of range.
 func hexChannels(hex string) (r, g, b int) {
 	hex = strings.TrimPrefix(hex, "#")
 	if len(hex) == 3 {
 		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	if !hexColorRe.MatchString(hex) {
+		return 0x80, 0x80, 0x80
 	}
 	rv, _ := strconv.ParseInt(hex[0:2], 16, 0)
 	gv, _ := strconv.ParseInt(hex[2:4], 16, 0)

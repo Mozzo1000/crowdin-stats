@@ -50,11 +50,19 @@
   // weighting b by t (0..1). Used to derive the fallback-avatar fill from
   // bg/text rather than reusing colors.border, which is now tuned for
   // stroke contrast and reads as too solid/prominent as a fill.
+  //
+  // bg/border may hold 'none' instead of a hex string — the transparent
+  // keyword sent over the wire (mirroring render.go's sanitizeBgOrBorderColor,
+  // see the [data-builder-transparent] wiring below) — which has no RGB
+  // value to derive; falls back to a neutral mid-gray rather than parsing
+  // garbage, mirroring render.go's hexChannels guard.
+  var HEX6_RE = /^[0-9a-fA-F]{6}$/;
   function hexChannels(hex) {
     hex = hex.replace('#', '');
     if (hex.length === 3) {
       hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
     }
+    if (!HEX6_RE.test(hex)) return [128, 128, 128];
     return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
   }
 
@@ -390,6 +398,10 @@
     if (state.theme === 'dark') params.set('theme', 'dark');
     var base = state.theme === 'dark' ? DARK_COLORS : DEFAULT_COLORS;
     ['bg', 'text', 'muted', 'accent', 'border'].forEach(function (key) {
+      if (state.colors[key] === 'none') {
+        params.set(key, 'transparent');
+        return;
+      }
       var hex = state.colors[key].replace('#', '');
       if (hex.toLowerCase() !== base[key].replace('#', '')) {
         params.set(key, hex);
@@ -487,6 +499,11 @@
     var themeButtons = root.querySelectorAll('[data-builder-theme]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
     var colorHexInputs = root.querySelectorAll('[data-builder-color-hex]');
+    var transparentInputs = root.querySelectorAll('[data-builder-transparent]');
+    // Last hex value per transparent-capable key, restored when the
+    // "Transparent" checkbox is unchecked — otherwise unchecking it would
+    // have nothing to revert to but the compile-time default.
+    var lastOpaqueColor = {};
     var contrastEls = root.querySelectorAll('[data-builder-contrast]');
     var contrastTipEls = root.querySelectorAll('[data-builder-contrast-tip]');
     var previewImg = root.querySelector('[data-builder-preview-img]');
@@ -534,10 +551,19 @@
 
     function syncColorInputs() {
       colorInputs.forEach(function (input) {
-        input.value = state.colors[input.getAttribute('data-builder-color')];
+        var key = input.getAttribute('data-builder-color');
+        var isTransparent = state.colors[key] === 'none';
+        input.disabled = isTransparent;
+        input.value = isTransparent ? (lastOpaqueColor[key] || DEFAULT_COLORS[key]) : state.colors[key];
       });
       colorHexInputs.forEach(function (input) {
-        input.value = state.colors[input.getAttribute('data-builder-color-hex')];
+        var key = input.getAttribute('data-builder-color-hex');
+        var isTransparent = state.colors[key] === 'none';
+        input.disabled = isTransparent;
+        input.value = isTransparent ? 'transparent' : state.colors[key];
+      });
+      transparentInputs.forEach(function (input) {
+        input.checked = state.colors[input.getAttribute('data-builder-transparent')] === 'none';
       });
     }
 
@@ -772,6 +798,7 @@
       input.addEventListener('input', function () {
         themeFollowsSite = false;
         state.colors[key] = input.value;
+        lastOpaqueColor[key] = input.value;
         syncColorInputs();
         render();
       });
@@ -785,12 +812,28 @@
         if (!normalized) return;
         themeFollowsSite = false;
         state.colors[key] = normalized;
+        lastOpaqueColor[key] = normalized;
         syncColorInputs();
         render();
       });
       input.addEventListener('blur', function () {
         // Revert stray/invalid text back to the last valid color on blur.
-        input.value = state.colors[key];
+        input.value = state.colors[key] === 'none' ? 'transparent' : state.colors[key];
+      });
+    });
+
+    transparentInputs.forEach(function (input) {
+      var key = input.getAttribute('data-builder-transparent');
+      input.addEventListener('change', function () {
+        themeFollowsSite = false;
+        if (input.checked) {
+          lastOpaqueColor[key] = state.colors[key] !== 'none' ? state.colors[key] : (lastOpaqueColor[key] || DEFAULT_COLORS[key]);
+          state.colors[key] = 'none';
+        } else {
+          state.colors[key] = lastOpaqueColor[key] || DEFAULT_COLORS[key];
+        }
+        syncColorInputs();
+        render();
       });
     });
 

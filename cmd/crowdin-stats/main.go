@@ -399,7 +399,9 @@ func trimToDigits(s string) string {
 // parseEmbedColors reads the shared bg/text/muted/accent/border query
 // params, falling back per-field to whichever base palette `theme` selects
 // (light, the default, or dark) for anything missing or not a valid 3- or
-// 6-digit hex color.
+// 6-digit hex color. bg and border also accept the `transparent` keyword
+// (see sanitizeBgOrBorderColor), so a card can blend into the page it's
+// embedded on instead of showing a hard-edged rect.
 //
 // When the request has neither a `theme` nor any individual color override,
 // the returned colors are marked auto (see embedColors.auto): rather than
@@ -416,11 +418,11 @@ func parseEmbedColors(q url.Values) embedColors {
 	auto := theme == "" &&
 		q.Get("bg") == "" && q.Get("text") == "" && q.Get("muted") == "" && q.Get("accent") == "" && q.Get("border") == ""
 	return embedColors{
-		bg:     sanitizeHexColor(q.Get("bg"), base.bg),
+		bg:     sanitizeBgOrBorderColor(q.Get("bg"), base.bg),
 		text:   sanitizeHexColor(q.Get("text"), base.text),
 		muted:  sanitizeHexColor(q.Get("muted"), base.muted),
 		accent: sanitizeHexColor(q.Get("accent"), base.accent),
-		border: sanitizeHexColor(q.Get("border"), base.border),
+		border: sanitizeBgOrBorderColor(q.Get("border"), base.border),
 		auto:   auto,
 	}
 }

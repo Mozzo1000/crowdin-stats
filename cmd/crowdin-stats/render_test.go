@@ -385,3 +385,63 @@ func TestSanitizeHexColor(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitizeBgOrBorderColor(t *testing.T) {
+	cases := []struct {
+		raw, fallback, want string
+	}{
+		{"transparent", "#000000", "none"},
+		{"Transparent", "#000000", "none"},
+		{" TRANSPARENT ", "#000000", "none"},
+		{"abc123", "#000000", "#abc123"},
+		{"", "#000000", "#000000"},
+		{"not-a-color", "#000000", "#000000"},
+	}
+	for _, c := range cases {
+		if got := sanitizeBgOrBorderColor(c.raw, c.fallback); got != c.want {
+			t.Errorf("sanitizeBgOrBorderColor(%q, %q) = %q, want %q", c.raw, c.fallback, got, c.want)
+		}
+	}
+}
+
+// TestParseEmbedColorsTransparent covers issue #68: bg/border accept the
+// transparent keyword so an embed can blend into the page it's dropped
+// into, while text/muted/accent stay hex-only since "no paint" isn't a
+// meaningful choice for text/strokes.
+func TestParseEmbedColorsTransparent(t *testing.T) {
+	q, err := url.ParseQuery("bg=transparent&border=Transparent&text=transparent")
+	if err != nil {
+		t.Fatalf("bad query: %v", err)
+	}
+	colors := parseEmbedColors(q)
+	if colors.bg != "none" {
+		t.Errorf("bg = %q, want %q", colors.bg, "none")
+	}
+	if colors.border != "none" {
+		t.Errorf("border = %q, want %q", colors.border, "none")
+	}
+	if colors.text != defaultEmbedColors.text {
+		t.Errorf("text = %q, want fallback %q (transparent keyword not honored on text)", colors.text, defaultEmbedColors.text)
+	}
+}
+
+// TestRenderTableSVGTransparentBg confirms a transparent bg/border reaches
+// the rendered SVG as fill="none"/stroke="none" rather than a literal
+// "transparent" or "#none" string, and that deriving the fallback-avatar
+// tint from a transparent bg doesn't panic (see hexChannels' non-hex
+// guard).
+func TestRenderTableSVGTransparentBg(t *testing.T) {
+	colors := embedColors{bg: "none", text: "#222222", muted: "#333333", accent: "#444444", border: "none"}
+	svg := renderTableSVG([]LanguageProgress{{LanguageName: "French", Percent: 80}}, colors)
+	if !strings.Contains(svg, `fill="none"`) {
+		t.Fatalf("expected fill=\"none\" for transparent bg, got: %s", svg)
+	}
+	if !strings.Contains(svg, `stroke="none"`) {
+		t.Fatalf("expected stroke=\"none\" for transparent border, got: %s", svg)
+	}
+
+	contributors := []Contributor{{Username: "alice", Amount: 100}}
+	if svg := renderContributorsSVG(contributors, 30, colors); !strings.Contains(svg, "<svg") {
+		t.Fatalf("expected renderContributorsSVG with transparent bg not to panic, got: %s", svg)
+	}
+}

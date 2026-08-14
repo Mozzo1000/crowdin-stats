@@ -232,7 +232,10 @@
           '" width="' + GRID.avatarSize + '" height="' + GRID.avatarSize + '" clip-path="url(#' + clipID + ')" preserveAspectRatio="xMidYMid slice"/>';
       } else {
         out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="' + fallbackFill + '"/>';
-        var initial = title ? title.charAt(0).toUpperCase() : '?';
+        // Array.from splits on code points (surrogate pairs kept together),
+        // matching render.go's []rune(title)[0] — plain charAt(0) would cut
+        // a multi-byte/astral first character in half. See issue #52.
+        var initial = title ? Array.from(title)[0].toUpperCase() : '?';
         out += '<text x="' + cx + '" y="' + cy + '" fill="' + colors.text + '" font-size="16" text-anchor="middle" dominant-baseline="central">' + esc(initial) + '</text>';
       }
       out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="none" stroke="' + colors.border + '" stroke-width="1"/>';

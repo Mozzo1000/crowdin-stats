@@ -82,7 +82,7 @@
       <p id="error-msg" class="hidden text-sm text-red-600 dark:text-red-400"></p>
     </form>
 
-    <div id="results" class="hidden mt-10 space-y-8">
+    <div id="results" class="hidden mt-10 space-y-8" tabindex="-1">
       <div class="panel p-4 border-accent/40">
         <p class="text-sm font-medium flex items-center gap-1.5">
           <svg class="shrink-0 text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
@@ -423,6 +423,8 @@
       renderPreviewImages();
       document.getElementById('revoke-url').value = data.revoke_url;
       results.classList.remove('hidden');
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      results.focus({ preventScroll: true });
 
       CrowdinStatsEmbedBuilder.init(document.querySelector('.embed-builder'), {
         mode: 'live',

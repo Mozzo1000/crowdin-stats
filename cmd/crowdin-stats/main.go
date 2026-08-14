@@ -311,17 +311,28 @@ func trimToDigits(s string) string {
 // params, falling back per-field to whichever base palette `theme` selects
 // (light, the default, or dark) for anything missing or not a valid 3- or
 // 6-digit hex color.
+//
+// When the request has neither a `theme` nor any individual color override,
+// the returned colors are marked auto (see embedColors.auto): rather than
+// silently defaulting to the light palette, the SVG embeds its own
+// prefers-color-scheme rule and follows the viewer's OS/browser color
+// scheme. Setting `theme` (even to `light`) or any single color opts out of
+// that and pins the fixed palette a maintainer asked for.
 func parseEmbedColors(q url.Values) embedColors {
+	theme := q.Get("theme")
 	base := defaultEmbedColors
-	if q.Get("theme") == "dark" {
+	if theme == "dark" {
 		base = darkEmbedColors
 	}
+	auto := theme == "" &&
+		q.Get("bg") == "" && q.Get("text") == "" && q.Get("muted") == "" && q.Get("accent") == "" && q.Get("border") == ""
 	return embedColors{
 		bg:     sanitizeHexColor(q.Get("bg"), base.bg),
 		text:   sanitizeHexColor(q.Get("text"), base.text),
 		muted:  sanitizeHexColor(q.Get("muted"), base.muted),
 		accent: sanitizeHexColor(q.Get("accent"), base.accent),
 		border: sanitizeHexColor(q.Get("border"), base.border),
+		auto:   auto,
 	}
 }
 

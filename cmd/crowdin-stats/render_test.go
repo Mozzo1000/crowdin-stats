@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -209,6 +210,48 @@ func TestParseLanguagePins(t *testing.T) {
 	}
 	if parseLanguagePins("") != nil {
 		t.Fatalf("expected nil for empty input")
+	}
+}
+
+func TestParseEmbedColorsAuto(t *testing.T) {
+	cases := []struct {
+		name string
+		q    string
+		auto bool
+	}{
+		{"no params at all", "", true},
+		{"explicit theme=dark opts out", "theme=dark", false},
+		{"explicit theme=light opts out", "theme=light", false},
+		{"a single color override opts out", "accent=ff0000", false},
+	}
+	for _, c := range cases {
+		q, err := url.ParseQuery(c.q)
+		if err != nil {
+			t.Fatalf("bad query %q: %v", c.q, err)
+		}
+		colors := parseEmbedColors(q)
+		if colors.auto != c.auto {
+			t.Errorf("%s: parseEmbedColors(%q).auto = %v, want %v", c.name, c.q, colors.auto, c.auto)
+		}
+	}
+}
+
+func TestAutoThemeEmbedsFollowsViewerColorScheme(t *testing.T) {
+	langs := []LanguageProgress{{LanguageName: "French", Percent: 80}}
+	auto := embedColors{auto: true,
+		bg: defaultEmbedColors.bg, text: defaultEmbedColors.text, muted: defaultEmbedColors.muted,
+		accent: defaultEmbedColors.accent, border: defaultEmbedColors.border,
+	}
+	svg := renderTableSVG(langs, auto)
+
+	if !strings.Contains(svg, "@media (prefers-color-scheme: dark)") {
+		t.Fatalf("expected an embedded dark-mode media query, got: %s", svg)
+	}
+	if !strings.Contains(svg, "var(--cs-bg)") || !strings.Contains(svg, "var(--cs-text)") {
+		t.Fatalf("expected fill attributes to reference the auto-theme custom properties, got: %s", svg)
+	}
+	if !strings.Contains(svg, darkEmbedColors.bg) {
+		t.Fatalf("expected the dark palette values to be embedded for the media query, got: %s", svg)
 	}
 }
 

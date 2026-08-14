@@ -62,7 +62,20 @@ func avatarLimitTier(limit int) int {
 // highest-ranked contributors, up to min(limit, maxAvatarEmbeds), are
 // fetched, to bound cost — renderContributorsSVG's own limit/sort produces
 // the same ordering, so this doesn't change which avatars end up visible.
+//
+// Uses the production avatarHTTPClient/avatarHostAllowed; callers that need
+// different behavior (gendemo's non-Crowdin demo host, tests) should call
+// embedAvatarsAsDataURIsWith directly instead of mutating those globals —
+// see fetchAvatarDataURI for why.
 func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor, limit int) []Contributor {
+	return embedAvatarsAsDataURIsWith(ctx, avatarHTTPClient, avatarHostAllowed, contributors, limit)
+}
+
+// embedAvatarsAsDataURIsWith is embedAvatarsAsDataURIs with the HTTP client
+// and host allowlist passed explicitly, rather than read from package
+// globals — lets callers (gendemo, tests) vary that behavior without
+// mutating shared state, which would race under parallel tests.
+func embedAvatarsAsDataURIsWith(ctx context.Context, client *http.Client, hostAllowed func(string) bool, contributors []Contributor, limit int) []Contributor {
 	sorted := make([]Contributor, len(contributors))
 	copy(sorted, contributors)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -88,7 +101,7 @@ func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor, lim
 		go func(idx int) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			sorted[idx].AvatarURL = fetchAvatarDataURI(ctx, sorted[idx].AvatarURL)
+			sorted[idx].AvatarURL = fetchAvatarDataURI(ctx, client, hostAllowed, sorted[idx].AvatarURL)
 		}(i)
 	}
 	wg.Wait()
@@ -96,9 +109,10 @@ func embedAvatarsAsDataURIs(ctx context.Context, contributors []Contributor, lim
 	return sorted
 }
 
-// avatarHTTPClient fetches avatar images. Its Transport resolves the target
-// host itself and refuses to dial any IP that isn't publicly routable
-// (loopback, RFC1918/ULA private ranges, link-local — which covers the
+// avatarHTTPClient is the production HTTP client fetchAvatarDataURI uses via
+// embedAvatarsAsDataURIs. Its Transport resolves the target host itself and
+// refuses to dial any IP that isn't publicly routable (loopback,
+// RFC1918/ULA private ranges, link-local — which covers the
 // 169.254.169.254 cloud metadata endpoint — and friends), so the guard
 // holds on the initial request and on every redirect hop alike, and can't
 // be bypassed by DNS rebinding between the check and the dial. AvatarURL
@@ -153,17 +167,18 @@ func isPubliclyRoutableIP(ip net.IP) bool {
 		!ip.IsUnspecified()
 }
 
-// avatarHostAllowed restricts fetchAvatarDataURI to Crowdin's own
-// domain(s) — Crowdin currently serves avatars from
-// crowdin-static.cf-downloads.crowdin.com — as a first line of defense on
-// top of the dial-time IP guard, in case AvatarURL is ever influenced by
-// something other than Crowdin's own report response. Matches any
-// *.crowdin.com subdomain rather than the exact host, so a CDN subdomain
-// change doesn't silently break every avatar.
+// avatarHostAllowed is the production host allowlist, restricting
+// fetchAvatarDataURI to Crowdin's own domain(s) — Crowdin currently serves
+// avatars from crowdin-static.cf-downloads.crowdin.com — as a first line of
+// defense on top of the dial-time IP guard, in case AvatarURL is ever
+// influenced by something other than Crowdin's own report response. Matches
+// any *.crowdin.com subdomain rather than the exact host, so a CDN
+// subdomain change doesn't silently break every avatar.
 //
-// gendemo.go temporarily overrides this to fetch from i.pravatar.cc for
-// checked-in demo assets — those URLs are hardcoded literals, not
-// attacker-influenced, so the Crowdin-only allowlist doesn't apply there.
+// gendemo.go passes its own hostAllowed func to embedAvatarsAsDataURIsWith
+// instead of using this one, to fetch from i.pravatar.cc for checked-in
+// demo assets — those URLs are hardcoded literals, not attacker-influenced,
+// so the Crowdin-only allowlist doesn't apply there.
 var avatarHostAllowed = func(host string) bool {
 	return host == "crowdin.com" || strings.HasSuffix(host, ".crowdin.com")
 }
@@ -172,9 +187,14 @@ var avatarHostAllowed = func(host string) bool {
 // URI, or "" on any failure (network error, non-https, disallowed host,
 // non-public address, wrong content type, too large) — callers treat ""
 // identically to "no avatar on file".
-func fetchAvatarDataURI(ctx context.Context, rawURL string) string {
+//
+// client and hostAllowed are passed explicitly rather than read from
+// package globals so callers that need different behavior (gendemo, tests)
+// can vary it without mutating shared state — which would race if tests
+// ever ran in parallel.
+func fetchAvatarDataURI(ctx context.Context, client *http.Client, hostAllowed func(string) bool, rawURL string) string {
 	u, err := url.Parse(rawURL)
-	if err != nil || u.Scheme != "https" || !avatarHostAllowed(u.Hostname()) {
+	if err != nil || u.Scheme != "https" || !hostAllowed(u.Hostname()) {
 		return ""
 	}
 
@@ -185,7 +205,7 @@ func fetchAvatarDataURI(ctx context.Context, rawURL string) string {
 	if err != nil {
 		return ""
 	}
-	resp, err := avatarHTTPClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return ""
 	}

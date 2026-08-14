@@ -48,15 +48,15 @@ func TestFetchAvatarDataURI(t *testing.T) {
 	// httptest.Server serves plain HTTP; fetchAvatarDataURI requires https,
 	// so exercise the https-only rule with a URL that's syntactically https
 	// but never actually dialed (scheme check happens before any request).
-	if got := fetchAvatarDataURI(context.Background(), "http://example.com/avatar.png"); got != "" {
+	if got := fetchAvatarDataURI(context.Background(), avatarHTTPClient, avatarHostAllowed, "http://example.com/avatar.png"); got != "" {
 		t.Fatalf("expected non-https URL to be rejected, got %q", got)
 	}
 
-	if got := fetchAvatarDataURI(context.Background(), srv.URL+"/ok.png"); got != "" {
+	if got := fetchAvatarDataURI(context.Background(), avatarHTTPClient, avatarHostAllowed, srv.URL+"/ok.png"); got != "" {
 		t.Fatalf("expected http test server URL to be rejected (https-only), got %q", got)
 	}
 
-	if got := fetchAvatarDataURI(context.Background(), "not a url"); got != "" {
+	if got := fetchAvatarDataURI(context.Background(), avatarHTTPClient, avatarHostAllowed, "not a url"); got != "" {
 		t.Fatalf("expected invalid URL to be rejected, got %q", got)
 	}
 }
@@ -96,15 +96,6 @@ func TestEmbedAvatarsAsDataURIsRespectsLimit(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := srv.Client()
-	origClient := avatarHTTPClient
-	avatarHTTPClient = client
-	defer func() { avatarHTTPClient = origClient }()
-
-	origHostAllowed := avatarHostAllowed
-	avatarHostAllowed = func(string) bool { return true }
-	defer func() { avatarHostAllowed = origHostAllowed }()
-
 	contributors := make([]Contributor, 10)
 	for i := range contributors {
 		contributors[i] = Contributor{
@@ -115,7 +106,7 @@ func TestEmbedAvatarsAsDataURIsRespectsLimit(t *testing.T) {
 	}
 
 	const limit = 3
-	out := embedAvatarsAsDataURIs(context.Background(), contributors, limit)
+	out := embedAvatarsAsDataURIsWith(context.Background(), srv.Client(), func(string) bool { return true }, contributors, limit)
 
 	if got := atomic.LoadInt32(&fetched); got != limit {
 		t.Fatalf("expected exactly %d avatar fetches, got %d", limit, got)
@@ -137,23 +128,14 @@ func TestFetchAvatarDataURIHTTPS(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := srv.Client()
-	origClient := avatarHTTPClient
-	avatarHTTPClient = client
-	defer func() { avatarHTTPClient = origClient }()
-
-	origHostAllowed := avatarHostAllowed
-	avatarHostAllowed = func(string) bool { return true }
-	defer func() { avatarHostAllowed = origHostAllowed }()
-
-	got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png")
+	got := fetchAvatarDataURI(context.Background(), srv.Client(), func(string) bool { return true }, srv.URL+"/avatar.png")
 	if !strings.HasPrefix(got, "data:image/png;base64,") {
 		t.Fatalf("expected a data URI, got %q", got)
 	}
 }
 
 func TestFetchAvatarDataURIBlocksDisallowedHost(t *testing.T) {
-	if got := fetchAvatarDataURI(context.Background(), "https://evil.example.com/avatar.png"); got != "" {
+	if got := fetchAvatarDataURI(context.Background(), avatarHTTPClient, avatarHostAllowed, "https://evil.example.com/avatar.png"); got != "" {
 		t.Fatalf("expected non-Crowdin host to be rejected, got %q", got)
 	}
 }
@@ -186,11 +168,7 @@ func TestFetchAvatarDataURIBlocksLoopback(t *testing.T) {
 	// against a server that is genuinely listening and would otherwise
 	// respond successfully, to confirm it's the dial-time guard rejecting
 	// the loopback address rather than anything else.
-	origHostAllowed := avatarHostAllowed
-	avatarHostAllowed = func(string) bool { return true }
-	defer func() { avatarHostAllowed = origHostAllowed }()
-
-	if got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png"); got != "" {
+	if got := fetchAvatarDataURI(context.Background(), avatarHTTPClient, func(string) bool { return true }, srv.URL+"/avatar.png"); got != "" {
 		t.Fatalf("expected loopback address to be blocked by SSRF guard, got %q", got)
 	}
 }

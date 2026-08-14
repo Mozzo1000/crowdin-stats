@@ -274,6 +274,10 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 			defer close(ownerDone)
 			ownerID, ownerErr = fetchProjectOwnerID(ctx, token, projectID)
 		}()
+		// Drain the goroutine on every return path (including early
+		// returns below), not just the success path, so it can't
+		// linger past this call.
+		defer func() { <-ownerDone }()
 	}
 
 	client, id, err := crowdinRequestSetup(ctx, token, projectID)

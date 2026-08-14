@@ -129,7 +129,7 @@
       </div>
     </div>
 
-    <p class="mt-6 max-w-xl mx-auto text-xs text-text-muted">
+    <p id="terms-notice" class="mt-6 max-w-xl mx-auto text-xs text-text-muted">
       By continuing you agree to the <a class="text-accent hover:underline" href="/terms">Terms of Service</a>
       and <a class="text-accent hover:underline" href="/privacy">Privacy Policy</a>.
     </p>
@@ -151,6 +151,7 @@
     const manualToggle = document.getElementById('manual-project-toggle');
     const manualInput = document.getElementById('project-id-manual');
     const patInstructions = document.getElementById('pat-instructions');
+    const termsNotice = document.getElementById('terms-notice');
 
     // Debounce project lookups so we're not hitting the Crowdin API on
     // every keystroke while the user is still typing/pasting their token.
@@ -335,6 +336,7 @@
       form.reset();
       form.classList.add('hidden');
       patInstructions.classList.add('hidden');
+      termsNotice.classList.add('hidden');
 
       const overallCircleURL = data.overall_url + '&variant=circle';
 

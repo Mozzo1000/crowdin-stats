@@ -79,9 +79,13 @@ func TestEmbedAvatarsAsDataURIsRespectsLimit(t *testing.T) {
 	defer srv.Close()
 
 	client := srv.Client()
-	orig := avatarHTTPClient
+	origClient := avatarHTTPClient
 	avatarHTTPClient = client
-	defer func() { avatarHTTPClient = orig }()
+	defer func() { avatarHTTPClient = origClient }()
+
+	origHostAllowed := avatarHostAllowed
+	avatarHostAllowed = func(string) bool { return true }
+	defer func() { avatarHostAllowed = origHostAllowed }()
 
 	contributors := make([]Contributor, 10)
 	for i := range contributors {
@@ -116,13 +120,38 @@ func TestFetchAvatarDataURIHTTPS(t *testing.T) {
 	defer srv.Close()
 
 	client := srv.Client()
-	orig := avatarHTTPClient
+	origClient := avatarHTTPClient
 	avatarHTTPClient = client
-	defer func() { avatarHTTPClient = orig }()
+	defer func() { avatarHTTPClient = origClient }()
+
+	origHostAllowed := avatarHostAllowed
+	avatarHostAllowed = func(string) bool { return true }
+	defer func() { avatarHostAllowed = origHostAllowed }()
 
 	got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png")
 	if !strings.HasPrefix(got, "data:image/png;base64,") {
 		t.Fatalf("expected a data URI, got %q", got)
+	}
+}
+
+func TestFetchAvatarDataURIBlocksDisallowedHost(t *testing.T) {
+	if got := fetchAvatarDataURI(context.Background(), "https://evil.example.com/avatar.png"); got != "" {
+		t.Fatalf("expected non-Crowdin host to be rejected, got %q", got)
+	}
+}
+
+func TestAvatarHostAllowed(t *testing.T) {
+	cases := map[string]bool{
+		"crowdin-static.cf-downloads.crowdin.com": true,
+		"crowdin.com":                       true,
+		"evil.crowdin.com.attacker.example": false,
+		"notcrowdin.com":                    false,
+		"attacker.example":                  false,
+	}
+	for host, want := range cases {
+		if got := avatarHostAllowed(host); got != want {
+			t.Errorf("avatarHostAllowed(%q) = %v, want %v", host, got, want)
+		}
 	}
 }
 
@@ -133,10 +162,16 @@ func TestFetchAvatarDataURIBlocksLoopback(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// Deliberately don't swap avatarHTTPClient here: this exercises the
-	// real guarded client against a server that is genuinely listening and
-	// would otherwise respond successfully, to confirm it's the dial-time
-	// SSRF guard rejecting the loopback address rather than anything else.
+	// Bypass the host allowlist so this test isolates the dial-time IP
+	// guard specifically, rather than the (separately tested) host check.
+	// avatarHTTPClient is deliberately left as the real guarded client
+	// against a server that is genuinely listening and would otherwise
+	// respond successfully, to confirm it's the dial-time guard rejecting
+	// the loopback address rather than anything else.
+	origHostAllowed := avatarHostAllowed
+	avatarHostAllowed = func(string) bool { return true }
+	defer func() { avatarHostAllowed = origHostAllowed }()
+
 	if got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png"); got != "" {
 		t.Fatalf("expected loopback address to be blocked by SSRF guard, got %q", got)
 	}

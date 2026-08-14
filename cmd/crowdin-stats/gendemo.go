@@ -40,6 +40,10 @@ func generateDemoSVGs() {
 	// a real embed — required even here, since a browser refuses to load an
 	// external <image href> inside an SVG used as <img src> (see avatar.go),
 	// which is exactly how this demo asset is displayed on the landing page.
+	origHostAllowed := avatarHostAllowed
+	avatarHostAllowed = func(host string) bool { return host == "i.pravatar.cc" }
+	defer func() { avatarHostAllowed = origHostAllowed }()
+
 	demoContributors := embedAvatarsAsDataURIs(context.Background(), []Contributor{
 		{Username: "amara", FullName: "Amara Okafor", Amount: 4210, AvatarURL: "https://i.pravatar.cc/150?img=47"},
 		{Username: "kenji", FullName: "Kenji Watanabe", Amount: 3870, AvatarURL: "https://i.pravatar.cc/150?img=52"},

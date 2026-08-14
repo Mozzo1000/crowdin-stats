@@ -127,13 +127,28 @@ func isPubliclyRoutableIP(ip net.IP) bool {
 		!ip.IsUnspecified()
 }
 
+// avatarHostAllowed restricts fetchAvatarDataURI to Crowdin's own
+// domain(s) — Crowdin currently serves avatars from
+// crowdin-static.cf-downloads.crowdin.com — as a first line of defense on
+// top of the dial-time IP guard, in case AvatarURL is ever influenced by
+// something other than Crowdin's own report response. Matches any
+// *.crowdin.com subdomain rather than the exact host, so a CDN subdomain
+// change doesn't silently break every avatar.
+//
+// gendemo.go temporarily overrides this to fetch from i.pravatar.cc for
+// checked-in demo assets — those URLs are hardcoded literals, not
+// attacker-influenced, so the Crowdin-only allowlist doesn't apply there.
+var avatarHostAllowed = func(host string) bool {
+	return host == "crowdin.com" || strings.HasSuffix(host, ".crowdin.com")
+}
+
 // fetchAvatarDataURI downloads a single avatar and returns it as a data:
-// URI, or "" on any failure (network error, non-https, non-public address,
-// wrong content type, too large) — callers treat "" identically to "no
-// avatar on file".
+// URI, or "" on any failure (network error, non-https, disallowed host,
+// non-public address, wrong content type, too large) — callers treat ""
+// identically to "no avatar on file".
 func fetchAvatarDataURI(ctx context.Context, rawURL string) string {
 	u, err := url.Parse(rawURL)
-	if err != nil || u.Scheme != "https" {
+	if err != nil || u.Scheme != "https" || !avatarHostAllowed(u.Hostname()) {
 		return ""
 	}
 

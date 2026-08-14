@@ -696,16 +696,16 @@ func (s *server) handleEmbedDataError(w http.ResponseWriter, err error) {
 func (s *server) handleEmbedError(w http.ResponseWriter, err error, colors embedColors) {
 	switch {
 	case errors.Is(err, errRateLimited):
-		writeSVG(w, emptyStateSVG(320, 60, "rate limited, try again shortly", colors))
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "rate limited, try again shortly", colors), errorSVGMaxAge)
 	case errors.Is(err, errCrowdinAuthInvalid):
 		slog.Warn("embed render failed: token invalid", "error", err)
-		writeSVG(w, emptyStateSVG(320, 60, "token invalid — re-run setup", colors))
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "token invalid — re-run setup", colors), errorSVGMaxAge)
 	case errors.Is(err, errCrowdinProjectNotFound):
 		slog.Warn("embed render failed: project not found", "error", err)
-		writeSVG(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors))
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors), errorSVGMaxAge)
 	default:
 		slog.Warn("embed render failed", "error", err)
-		writeSVG(w, emptyStateSVG(320, 60, "temporarily unavailable", colors))
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "temporarily unavailable", colors), errorSVGMaxAge)
 	}
 }
 
@@ -775,8 +775,18 @@ func (n noDirListingFS) Open(name string) (http.File, error) {
 	return f, nil
 }
 
+// errorSVGMaxAge is deliberately much shorter than the 300s success TTL:
+// GitHub's camo proxy (and browsers) cache whatever we send here, so a long
+// TTL on a "temporarily unavailable" placeholder would keep serving it long
+// after a transient Crowdin API blip has cleared (github.com/Mozzo1000/crowdin-stats/issues/11).
+const errorSVGMaxAge = 30
+
 func writeSVG(w http.ResponseWriter, svg string) {
+	writeSVGWithMaxAge(w, svg, 300)
+}
+
+func writeSVGWithMaxAge(w http.ResponseWriter, svg string, maxAgeSeconds int) {
 	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "public, max-age=300")
+	w.Header().Set("Cache-Control", "public, max-age="+strconv.Itoa(maxAgeSeconds))
 	w.Write([]byte(svg))
 }

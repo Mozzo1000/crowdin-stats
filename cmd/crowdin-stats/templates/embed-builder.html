@@ -125,5 +125,10 @@
       <div data-builder-url class="flex-1 font-mono text-xs text-accent break-all bg-bg-subtle border border-border rounded-lg px-3 py-2"></div>
       <button type="button" data-builder-copy class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>
     </div>
+    {{if not .LivePreview}}
+      <p class="mt-2 text-xs text-text-muted">
+        <span class="builder-placeholder">{public_id}</span> is a stand-in — <a href="/setup" class="text-accent hover:underline">set up your project</a> to get a URL that actually works.
+      </p>
+    {{end}}
   </div>
 {{end}}

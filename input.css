@@ -89,6 +89,12 @@
     @apply font-mono text-sm bg-bg-subtle border border-border rounded-lg px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent;
   }
 
+  /* Marks a stand-in like {public_id} in the demo embed-builder's URL as
+     "fill this in", not a working value — see embed-builder.js. */
+  .builder-placeholder {
+    @apply bg-accent-soft text-accent rounded px-1 font-semibold;
+  }
+
   .nav-link {
     @apply text-text-muted hover:text-text transition-colors text-sm font-medium;
   }

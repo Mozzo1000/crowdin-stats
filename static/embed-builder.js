@@ -394,7 +394,18 @@
       var qs = buildQueryString(state.type, state);
       var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
       var fullURL = baseEmbedURL + '/' + filename + qs;
-      if (urlEl) urlEl.textContent = fullURL;
+      if (urlEl) {
+        if (mode === 'demo') {
+          // baseEmbedURL still contains the literal "{public_id}" stand-in
+          // here — flag it visually so it doesn't read as a working URL.
+          urlEl.innerHTML = fullURL
+            .split('{public_id}')
+            .map(esc)
+            .join('<span class="builder-placeholder">{public_id}</span>');
+        } else {
+          urlEl.textContent = fullURL;
+        }
+      }
 
       if (mode === 'demo' && previewEl) {
         var svg;
@@ -514,12 +525,13 @@
     });
 
     if (copyBtn) {
+      if (mode === 'demo') copyBtn.textContent = 'Copy template';
       copyBtn.addEventListener('click', function () {
         var text = urlEl ? urlEl.textContent : '';
         navigator.clipboard.writeText(text);
         var original = copyBtn.textContent;
-        copyBtn.textContent = 'Copied!';
-        setTimeout(function () { copyBtn.textContent = original; }, 1500);
+        copyBtn.textContent = mode === 'demo' ? 'Copied — swap in your ID' : 'Copied!';
+        setTimeout(function () { copyBtn.textContent = original; }, mode === 'demo' ? 2500 : 1500);
       });
     }
 

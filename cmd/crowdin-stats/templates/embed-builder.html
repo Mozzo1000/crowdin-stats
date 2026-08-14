@@ -32,7 +32,7 @@
       <div>
         <label class="flex items-center justify-between text-sm font-medium mb-1.5">
           <span>Limit</span>
-          <span data-builder-limit-value class="text-text-muted font-mono">30</span>
+          <span data-builder-limit-value aria-live="polite" class="text-text-muted font-mono">30</span>
         </label>
         <input type="range" min="1" max="100" value="30" data-builder-limit class="w-full accent-accent" />
       </div>
@@ -171,7 +171,7 @@
 
     <div class="flex items-center gap-2">
       <div data-builder-url class="flex-1 font-mono text-xs text-accent break-all bg-bg-subtle border border-border rounded-lg px-3 py-2"></div>
-      <button type="button" data-builder-copy class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>
+      <button type="button" data-builder-copy aria-live="polite" class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>
     </div>
     {{if not .LivePreview}}
       <p class="mt-2 text-xs text-text-muted">

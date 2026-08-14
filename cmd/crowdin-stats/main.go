@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -153,6 +154,10 @@ type setupResponse struct {
 }
 
 func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	if !hasJSONContentType(r) {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 
 	ip := clientIP(r)
@@ -271,6 +276,10 @@ type listProjectsResponse struct {
 // /setup since the frontend calls it once per debounced pause in typing
 // rather than once per full form submission.
 func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
+	if !hasJSONContentType(r) {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 
 	ip := clientIP(r)
@@ -312,6 +321,18 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(listProjectsResponse{Projects: projects})
+}
+
+// hasJSONContentType reports whether the request declares an
+// application/json body. Browsers restrict cross-origin form submissions
+// (the classic CSRF vector) to a small set of "simple" Content-Types —
+// application/x-www-form-urlencoded, multipart/form-data, and text/plain —
+// none of which is application/json, so requiring it here blocks
+// form-based CSRF against /setup and /setup/projects without needing a
+// token.
+func hasJSONContentType(r *http.Request) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mediaType == "application/json"
 }
 
 func trimToDigits(s string) string {

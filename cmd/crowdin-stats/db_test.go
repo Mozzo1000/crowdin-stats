@@ -67,6 +67,80 @@ func TestRateLimited(t *testing.T) {
 	}
 }
 
+func TestRateLimitPeek(t *testing.T) {
+	db := newTestDB(t)
+	for i := 0; i < 5; i++ {
+		if limited, retryAfter := rateLimitPeek(db, "bucket", 3, time.Hour); limited || retryAfter != 0 {
+			t.Fatalf("peek %d: expected (false, 0) below limit, got (%v, %v)", i, limited, retryAfter)
+		}
+	}
+
+	for i := 0; i < 3; i++ {
+		recordFailure(db, "bucket", time.Hour)
+	}
+
+	for i := 0; i < 3; i++ {
+		limited, retryAfter := rateLimitPeek(db, "bucket", 3, time.Hour)
+		if !limited {
+			t.Fatalf("peek %d: expected limited once count reaches limit", i)
+		}
+		if retryAfter <= 0 || retryAfter > time.Hour {
+			t.Fatalf("peek %d: expected retryAfter within (0, 1h], got %v", i, retryAfter)
+		}
+	}
+
+	if limited, _ := rateLimitPeek(db, "bucket", 4, time.Hour); limited {
+		t.Fatalf("expected count of 3 to stay under a higher limit — peek must not have incremented the counter")
+	}
+}
+
+func TestRecordFailure(t *testing.T) {
+	db := newTestDB(t)
+	for i := 1; i <= 4; i++ {
+		recordFailure(db, "bucket", time.Hour)
+		if limited, _ := rateLimitPeek(db, "bucket", i, time.Hour); !limited {
+			t.Fatalf("after %d recordFailure calls, expected count to have reached limit %d", i, i)
+		}
+		if limited, _ := rateLimitPeek(db, "bucket", i+1, time.Hour); limited {
+			t.Fatalf("after %d recordFailure calls, expected count to still be under limit %d", i, i+1)
+		}
+	}
+}
+
+func TestRecordFailureWindowExpiry(t *testing.T) {
+	db := newTestDB(t)
+	staleStart := time.Now().Add(-2 * time.Hour).Unix()
+	if _, err := db.Exec(`INSERT INTO rate_limits (bucket_key, count, window_start) VALUES (?, ?, ?)`,
+		"bucket", 10, staleStart); err != nil {
+		t.Fatalf("seed stale row: %v", err)
+	}
+
+	recordFailure(db, "bucket", time.Hour)
+
+	if limited, _ := rateLimitPeek(db, "bucket", 1, time.Hour); !limited {
+		t.Fatalf("expected count to be reset to 1 after a stale window, so limit=1 should already be reached")
+	}
+	if limited, _ := rateLimitPeek(db, "bucket", 2, time.Hour); limited {
+		t.Fatalf("expected count to be exactly 1 after window reset, not still 10")
+	}
+}
+
+func TestGeneralAndFailureBucketsIndependent(t *testing.T) {
+	db := newTestDB(t)
+	for i := 0; i < 3; i++ {
+		if limited, _ := rateLimited(db, "general", 3, time.Hour); limited {
+			t.Fatalf("unexpected rate limit on general bucket at request %d", i)
+		}
+	}
+	if limited, _ := rateLimited(db, "general", 3, time.Hour); !limited {
+		t.Fatalf("expected general bucket to be limited after exceeding threshold")
+	}
+
+	if limited, _ := rateLimitPeek(db, "failure", 3, time.Hour); limited {
+		t.Fatalf("expected failure bucket to be untouched by general bucket traffic")
+	}
+}
+
 func TestCacheStaleWhileRevalidate(t *testing.T) {
 	db := newTestDB(t)
 	ctx := context.Background()

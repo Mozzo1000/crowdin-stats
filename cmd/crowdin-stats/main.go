@@ -138,9 +138,14 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 	if !s.noRateLimit {
-		if limited, retryAfter := rateLimited(s.db, "setup:"+ip, 5, time.Hour); limited {
+		if limited, retryAfter := rateLimited(s.db, "setup:"+ip, 20, time.Hour); limited {
 			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
 			http.Error(w, "too many setup attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
+			return
+		}
+		if limited, retryAfter := rateLimitPeek(s.db, "setup-fail:"+ip, 5, time.Hour); limited {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			http.Error(w, "too many failed setup attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
 			return
 		}
 	}
@@ -175,6 +180,9 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		// otherwise the user "fixes" the ID and immediately hits a second,
 		// previously-hidden error on the token.
 		if _, err := ListProjects(ctx, req.Token); err != nil {
+			if !s.noRateLimit {
+				recordFailure(s.db, "setup-fail:"+ip, time.Hour)
+			}
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -183,6 +191,9 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := ValidateProject(ctx, req.Token, req.CrowdinProjectID); err != nil {
+		if !s.noRateLimit {
+			recordFailure(s.db, "setup-fail:"+ip, time.Hour)
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -241,6 +252,11 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "too many attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
 			return
 		}
+		if limited, retryAfter := rateLimitPeek(s.db, "setup-projects-fail:"+ip, 5, time.Hour); limited {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			http.Error(w, "too many failed attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
+			return
+		}
 	}
 
 	var req listProjectsRequest
@@ -258,6 +274,9 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 
 	projects, err := ListProjects(ctx, req.Token)
 	if err != nil {
+		if !s.noRateLimit {
+			recordFailure(s.db, "setup-projects-fail:"+ip, time.Hour)
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

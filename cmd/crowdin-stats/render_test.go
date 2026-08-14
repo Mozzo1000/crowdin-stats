@@ -39,6 +39,30 @@ func TestRenderTableSVGCustomColors(t *testing.T) {
 	}
 }
 
+// LanguageName is user-influenced (a Crowdin project can name a custom
+// language anything), so it's the primary XSS surface in renderTableSVG —
+// this asserts the raw markup never reaches the output unescaped.
+func TestRenderTableSVGEscapesLanguageName(t *testing.T) {
+	svg := renderTableSVG([]LanguageProgress{
+		{LanguageName: `<script>alert(1)</script>`, Percent: 50},
+	}, defaultEmbedColors)
+	if strings.Contains(svg, "<script>") {
+		t.Fatalf("expected language name to be escaped, got raw <script> in: %s", svg)
+	}
+	if !strings.Contains(svg, "&lt;script&gt;") {
+		t.Fatalf("expected escaped language name in output: %s", svg)
+	}
+}
+
+func TestRenderTableSVGEscapesQuotesInLanguageName(t *testing.T) {
+	svg := renderTableSVG([]LanguageProgress{
+		{LanguageName: `"><rect/>`, Percent: 50},
+	}, defaultEmbedColors)
+	if strings.Contains(svg, `"><rect/>`) {
+		t.Fatalf("expected quote-breakout attempt to be escaped, got raw markup in: %s", svg)
+	}
+}
+
 func TestRenderContributorsSVG(t *testing.T) {
 	svg := renderContributorsSVG([]Contributor{
 		{Username: "alice", Amount: 100},
@@ -55,6 +79,34 @@ func TestRenderContributorsSVG(t *testing.T) {
 	// is dead weight and must not be re-added.
 	if strings.Contains(svg, "<a ") || strings.Contains(svg, "crowdin.com/profile") {
 		t.Fatalf("expected no dead <a> links in output: %s", svg)
+	}
+}
+
+// FullName/Username come from Crowdin's report response (user-controlled
+// display names), so they're the primary XSS surface in
+// renderContributorsSVG — this asserts the raw markup never reaches the
+// <title> element or the initials fallback unescaped.
+func TestRenderContributorsSVGEscapesFullName(t *testing.T) {
+	svg := renderContributorsSVG([]Contributor{
+		{Username: "alice", FullName: `<script>alert(1)</script>`, Amount: 100},
+	}, 30, defaultEmbedColors)
+	if strings.Contains(svg, "<script>") {
+		t.Fatalf("expected full name to be escaped, got raw <script> in: %s", svg)
+	}
+	if !strings.Contains(svg, "&lt;script&gt;") {
+		t.Fatalf("expected escaped full name in output: %s", svg)
+	}
+}
+
+// AvatarURL is likewise Crowdin-report-controlled and lands in an <image
+// href="..."> attribute — a quote breakout there would let it inject
+// arbitrary SVG/markup, not just get treated as an untrusted URL string.
+func TestRenderContributorsSVGEscapesAvatarURL(t *testing.T) {
+	svg := renderContributorsSVG([]Contributor{
+		{Username: "alice", Amount: 100, AvatarURL: `https://example.com/a.png" onload="alert(1)`},
+	}, 30, defaultEmbedColors)
+	if strings.Contains(svg, `.png" onload="alert(1)`) {
+		t.Fatalf("expected avatar URL to be escaped, got raw attribute breakout in: %s", svg)
 	}
 }
 

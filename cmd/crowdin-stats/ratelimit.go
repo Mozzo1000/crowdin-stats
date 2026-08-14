@@ -116,11 +116,14 @@ func startCleanupTicker(db *sql.DB, now func() int64) func() {
 	return func() { close(done) }
 }
 
-// clientIP trusts X-Forwarded-For (set by Caddy), falling back to RemoteAddr.
+// clientIP trusts X-Real-IP, which Caddy sets to the true connecting peer's
+// address (overwriting, not appending to, any client-supplied value — see
+// Caddyfile), falling back to RemoteAddr. X-Forwarded-For is NOT used here:
+// Caddy appends to it rather than replacing it, so a client can prepend an
+// arbitrary spoofed value that would land at parts[0].
 func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		parts := strings.Split(fwd, ",")
-		return strings.TrimSpace(parts[0])
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

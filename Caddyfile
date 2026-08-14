@@ -10,5 +10,7 @@
 		Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
 	}
 
-	reverse_proxy app:8080
+	reverse_proxy app:8080 {
+		header_up X-Real-IP {http.request.remote.host}
+	}
 }

@@ -90,27 +90,63 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-5 gap-2 mb-5 pb-5 border-b border-border">
-      <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
-        bg
-        <input type="color" data-builder-color="bg" class="w-9 h-9 rounded cursor-pointer border border-border" />
-      </label>
-      <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
-        text
-        <input type="color" data-builder-color="text" class="w-9 h-9 rounded cursor-pointer border border-border" />
-      </label>
-      <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
-        muted
-        <input type="color" data-builder-color="muted" class="w-9 h-9 rounded cursor-pointer border border-border" />
-      </label>
-      <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
-        accent
-        <input type="color" data-builder-color="accent" class="w-9 h-9 rounded cursor-pointer border border-border" />
-      </label>
-      <label class="flex flex-col items-center gap-1.5 text-xs text-text-muted">
-        border
-        <input type="color" data-builder-color="border" class="w-9 h-9 rounded cursor-pointer border border-border" />
-      </label>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3 mb-5 pb-5 border-b border-border">
+      <div data-builder-color-row="bg" class="flex flex-col gap-1">
+        <label class="text-xs text-text-muted">Background</label>
+        <div class="color-swatch-field">
+          <input type="color" data-builder-color="bg" />
+          <input type="text" data-builder-color-hex="bg" maxlength="7" spellcheck="false" />
+        </div>
+      </div>
+      <div data-builder-color-row="text" class="flex flex-col gap-1">
+        <label class="text-xs text-text-muted">Text</label>
+        <div class="color-swatch-field">
+          <input type="color" data-builder-color="text" />
+          <input type="text" data-builder-color-hex="text" maxlength="7" spellcheck="false" />
+        </div>
+        <div class="relative inline-flex items-center gap-1 group w-max">
+          <span data-builder-contrast="text" class="text-xs whitespace-nowrap"></span>
+          <button type="button" class="text-text-muted hover:text-text focus:outline-none focus:text-text" aria-describedby="contrast-tip-text" aria-label="What does this contrast rating mean?">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </button>
+          <span id="contrast-tip-text" role="tooltip" data-builder-contrast-tip="text" class="tooltip-bubble"></span>
+        </div>
+      </div>
+      <div data-builder-color-row="muted" class="flex flex-col gap-1">
+        <label class="text-xs text-text-muted">Muted text</label>
+        <div class="color-swatch-field">
+          <input type="color" data-builder-color="muted" />
+          <input type="text" data-builder-color-hex="muted" maxlength="7" spellcheck="false" />
+        </div>
+        <div class="relative inline-flex items-center gap-1 group w-max">
+          <span data-builder-contrast="muted" class="text-xs whitespace-nowrap"></span>
+          <button type="button" class="text-text-muted hover:text-text focus:outline-none focus:text-text" aria-describedby="contrast-tip-muted" aria-label="What does this contrast rating mean?">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </button>
+          <span id="contrast-tip-muted" role="tooltip" data-builder-contrast-tip="muted" class="tooltip-bubble"></span>
+        </div>
+      </div>
+      <div data-builder-color-row="accent" class="flex flex-col gap-1">
+        <label class="text-xs text-text-muted">Accent</label>
+        <div class="color-swatch-field">
+          <input type="color" data-builder-color="accent" />
+          <input type="text" data-builder-color-hex="accent" maxlength="7" spellcheck="false" />
+        </div>
+        <div class="relative inline-flex items-center gap-1 group w-max">
+          <span data-builder-contrast="accent" class="text-xs whitespace-nowrap"></span>
+          <button type="button" class="text-text-muted hover:text-text focus:outline-none focus:text-text" aria-describedby="contrast-tip-accent" aria-label="What does this contrast rating mean?">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </button>
+          <span id="contrast-tip-accent" role="tooltip" data-builder-contrast-tip="accent" class="tooltip-bubble"></span>
+        </div>
+      </div>
+      <div data-builder-color-row="border" class="flex flex-col gap-1">
+        <label class="text-xs text-text-muted">Border</label>
+        <div class="color-swatch-field">
+          <input type="color" data-builder-color="border" />
+          <input type="text" data-builder-color-hex="border" maxlength="7" spellcheck="false" />
+        </div>
+      </div>
     </div>
 
     <div class="mb-4 overflow-x-auto">

@@ -89,6 +89,35 @@
     @apply font-mono text-sm bg-bg-subtle border border-border rounded-lg px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-accent;
   }
 
+  /* A color <input type="color"> swatch and its hex <input type="text">
+     fallback rendered as one pill instead of two separate boxes — see
+     embed-builder.html's color rows. */
+  .color-swatch-field {
+    @apply flex items-center bg-bg-subtle border border-border rounded-lg overflow-hidden focus-within:border-accent;
+  }
+  .color-swatch-field input[type="color"] {
+    @apply w-9 h-9 shrink-0 cursor-pointer border-0 p-0 bg-transparent;
+  }
+  .color-swatch-field input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .color-swatch-field input[type="color"]::-webkit-color-swatch {
+    border: none;
+  }
+  .color-swatch-field input[type="color"]::-moz-color-swatch {
+    border: none;
+  }
+  .color-swatch-field input[type="text"] {
+    @apply font-mono text-sm bg-transparent border-0 pl-2 pr-3 py-2 w-0 flex-1 min-w-0 text-text placeholder:text-text-muted focus:outline-none;
+  }
+
+  /* Hover/focus-triggered explainer bubble — used for the contrast-ratio
+     hint under each color-swatch-field, so "4.8:1" doesn't need to be
+     self-explanatory on its own. */
+  .tooltip-bubble {
+    @apply pointer-events-none absolute left-0 bottom-full mb-1.5 hidden w-52 rounded-lg bg-text px-2.5 py-2 text-xs leading-snug text-bg shadow-sm z-20 group-hover:block group-focus-within:block;
+  }
+
   /* Marks a stand-in like {public_id} in the demo embed-builder's URL as
      "fill this in", not a working value — see embed-builder.js. */
   .builder-placeholder {

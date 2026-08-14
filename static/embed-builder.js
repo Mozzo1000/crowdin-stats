@@ -40,6 +40,31 @@
     }).join('');
   }
 
+  // WCAG 2.x relative luminance / contrast ratio, used to warn when a
+  // foreground/background pair the user picked would be hard to read.
+  function srgbToLinear(c) {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+
+  function relativeLuminance(hex) {
+    var ch = hexChannels(hex);
+    return 0.2126 * srgbToLinear(ch[0]) + 0.7152 * srgbToLinear(ch[1]) + 0.0722 * srgbToLinear(ch[2]);
+  }
+
+  function contrastRatio(hexA, hexB) {
+    var lA = relativeLuminance(hexA) + 0.05;
+    var lB = relativeLuminance(hexB) + 0.05;
+    return lA > lB ? lA / lB : lB / lA;
+  }
+
+  var HEX_COLOR_RE = /^#?[0-9a-fA-F]{6}$/;
+
+  function normalizeHex(raw) {
+    if (!HEX_COLOR_RE.test(raw)) return null;
+    return '#' + raw.replace('#', '').toLowerCase();
+  }
+
   var DEMO_LANGUAGES = [
     { id: 'fr', name: 'French', percent: 96, approvalPercent: 80, wordsTotal: 850, wordsTranslated: 816, wordsApproved: 680, phrasesTotal: 620, phrasesTranslated: 595, phrasesApproved: 496 },
     { id: 'de', name: 'German', percent: 88, approvalPercent: 65, wordsTotal: 850, wordsTranslated: 748, wordsApproved: 552, phrasesTotal: 620, phrasesTranslated: 546, phrasesApproved: 403 },
@@ -395,6 +420,9 @@
     var overallVariantSelect = root.querySelector('[data-builder-overall-variant]');
     var themeButtons = root.querySelectorAll('[data-builder-theme]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
+    var colorHexInputs = root.querySelectorAll('[data-builder-color-hex]');
+    var contrastEls = root.querySelectorAll('[data-builder-contrast]');
+    var contrastTipEls = root.querySelectorAll('[data-builder-contrast-tip]');
     var previewImg = root.querySelector('[data-builder-preview-img]');
     var previewEl = root.querySelector('[data-builder-preview]');
     var urlEl = root.querySelector('[data-builder-url]');
@@ -435,6 +463,42 @@
         });
     }
 
+    function syncColorInputs() {
+      colorInputs.forEach(function (input) {
+        input.value = state.colors[input.getAttribute('data-builder-color')];
+      });
+      colorHexInputs.forEach(function (input) {
+        input.value = state.colors[input.getAttribute('data-builder-color-hex')];
+      });
+    }
+
+    function renderContrastWarnings() {
+      // Warn when a color that's rendered as text (text/muted/accent) is
+      // hard to read against the chosen background — WCAG AA for normal
+      // text is a 4.5:1 contrast ratio. The number alone ("4.8:1") means
+      // nothing to most people, so it's paired with a plain-language
+      // tooltip (see the (i) button next to it) rather than just the
+      // ratio and a WCAG citation.
+      contrastEls.forEach(function (el) {
+        var key = el.getAttribute('data-builder-contrast');
+        var ratio = contrastRatio(state.colors[key], state.colors.bg);
+        var passes = ratio >= 4.5;
+        el.textContent = (passes ? '' : '⚠ ') + ratio.toFixed(1) + ':1';
+        el.classList.toggle('text-red-600', !passes);
+        el.classList.toggle('dark:text-red-400', !passes);
+        el.classList.toggle('text-text-muted', passes);
+      });
+      contrastTipEls.forEach(function (el) {
+        var key = el.getAttribute('data-builder-contrast-tip');
+        var ratio = contrastRatio(state.colors[key], state.colors.bg);
+        var passes = ratio >= 4.5;
+        el.textContent = (passes
+          ? 'Easy to read: this color stands out well against the background.'
+          : 'Hard to read: this color is too close to the background color, so text in it may be difficult to see — especially for people with low vision.')
+          + ' (contrast ratio ' + ratio.toFixed(1) + ':1, ' + (passes ? 'meets' : 'below') + ' the WCAG accessibility guideline of 4.5:1)';
+      });
+    }
+
     function render() {
       typeButtons.forEach(function (btn) {
         var active = btn.getAttribute('data-embed-type') === state.type;
@@ -459,6 +523,8 @@
         btn.classList.toggle('text-accent-contrast', active);
         btn.classList.toggle('text-text-muted', !active);
       });
+
+      renderContrastWarnings();
 
       var qs = buildQueryString(state.type, state);
       var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
@@ -607,9 +673,7 @@
         themeFollowsSite = false;
         state.theme = btn.getAttribute('data-builder-theme');
         state.colors = Object.assign({}, state.theme === 'dark' ? DARK_COLORS : DEFAULT_COLORS);
-        colorInputs.forEach(function (input) {
-          input.value = state.colors[input.getAttribute('data-builder-color')];
-        });
+        syncColorInputs();
         render();
       });
     });
@@ -620,7 +684,25 @@
       input.addEventListener('input', function () {
         themeFollowsSite = false;
         state.colors[key] = input.value;
+        syncColorInputs();
         render();
+      });
+    });
+
+    colorHexInputs.forEach(function (input) {
+      var key = input.getAttribute('data-builder-color-hex');
+      input.value = state.colors[key];
+      input.addEventListener('input', function () {
+        var normalized = normalizeHex(input.value);
+        if (!normalized) return;
+        themeFollowsSite = false;
+        state.colors[key] = normalized;
+        syncColorInputs();
+        render();
+      });
+      input.addEventListener('blur', function () {
+        // Revert stray/invalid text back to the last valid color on blur.
+        input.value = state.colors[key];
       });
     });
 
@@ -632,9 +714,7 @@
       var dark = document.documentElement.classList.contains('dark');
       state.theme = dark ? 'dark' : 'light';
       state.colors = Object.assign({}, dark ? DARK_COLORS : DEFAULT_COLORS);
-      colorInputs.forEach(function (input) {
-        input.value = state.colors[input.getAttribute('data-builder-color')];
-      });
+      syncColorInputs();
       render();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 

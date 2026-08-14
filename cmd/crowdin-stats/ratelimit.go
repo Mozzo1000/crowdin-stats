@@ -11,19 +11,28 @@ import (
 
 // windowState reads bucketKey's current fixed-window row, if any, and
 // reports whether it's still within window (vs. absent/expired, in which
-// case callers should treat it as an empty window). Folds unexpected DB
-// errors into live=false so callers fail open rather than blocking traffic.
-func windowState(db *sql.DB, bucketKey string, window time.Duration) (count int, windowStart int64, live bool) {
+// case callers should treat it as an empty window). err is set only for a
+// genuine DB error (not sql.ErrNoRows), so callers can distinguish "no
+// existing counter" from "couldn't read it" — the two must not be handled
+// the same way: recordFailure resets the bucket for the former but must
+// fail open (not touch the row) for the latter, or a transient read error
+// would silently reset an active rate-limit counter back to 1.
+func windowState(db *sql.DB, bucketKey string, window time.Duration) (count int, windowStart int64, live bool, err error) {
 	now := time.Now().Unix()
 	cutoff := now - int64(window.Seconds())
 	var c int
 	var ws int64
-	err := db.QueryRow(`SELECT count, window_start FROM rate_limits WHERE bucket_key = ?`,
+	scanErr := db.QueryRow(`SELECT count, window_start FROM rate_limits WHERE bucket_key = ?`,
 		bucketKey).Scan(&c, &ws)
-	if err != nil || ws < cutoff {
-		return 0, now, false
+	switch {
+	case scanErr == sql.ErrNoRows:
+		return 0, now, false, nil
+	case scanErr != nil:
+		return 0, now, false, scanErr
+	case ws < cutoff:
+		return 0, now, false, nil
 	}
-	return c, ws, true
+	return c, ws, true, nil
 }
 
 func retryAfterFor(windowStart int64, window time.Duration) time.Duration {
@@ -70,7 +79,7 @@ func rateLimited(db *sql.DB, bucketKey string, limit int, window time.Duration) 
 // increment just by checking it — e.g. a failure bucket that should only
 // grow once the request's outcome is known (see recordFailure).
 func rateLimitPeek(db *sql.DB, bucketKey string, limit int, window time.Duration) (bool, time.Duration) {
-	count, windowStart, live := windowState(db, bucketKey, window)
+	count, windowStart, live, _ := windowState(db, bucketKey, window)
 	if !live || count < limit {
 		return false, 0
 	}
@@ -82,7 +91,12 @@ func rateLimitPeek(db *sql.DB, bucketKey string, limit int, window time.Duration
 // enforce the limit separately via rateLimitPeek before doing the work whose
 // outcome recordFailure is meant to capture.
 func recordFailure(db *sql.DB, bucketKey string, window time.Duration) {
-	_, _, live := windowState(db, bucketKey, window)
+	_, _, live, err := windowState(db, bucketKey, window)
+	if err != nil {
+		// Fail open: a transient read error is not evidence the window
+		// expired, so don't reset a counter that may still be live.
+		return
+	}
 	if !live {
 		db.Exec(`INSERT INTO rate_limits (bucket_key, count, window_start) VALUES (?, 1, ?)
                  ON CONFLICT(bucket_key) DO UPDATE SET count=1, window_start=excluded.window_start`,

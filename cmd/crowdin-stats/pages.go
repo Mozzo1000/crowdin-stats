@@ -10,11 +10,23 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+// siteURL is the canonical base URL (matches Caddyfile's {$HOST}), used to
+// build absolute og:url / og:image values — social-media crawlers won't
+// resolve relative ones.
+const siteURL = "https://crowdin-stats.rewake.org"
+
 type pageData struct {
 	Title          string
+	Description    string
+	Path           string // used to build the absolute og:url
 	ShowGetStarted bool
 	LivePreview    bool // true renders the embed-builder's <img> preview (setup), false its inline SVG preview (index)
 }
+
+// CanonicalURL and OGImageURL are computed (rather than built in the
+// template) so siteURL only needs to change in one place.
+func (d pageData) CanonicalURL() string { return siteURL + d.Path }
+func (d pageData) OGImageURL() string   { return siteURL + "/static/og-image.png" }
 
 type page struct {
 	tmpl *template.Template
@@ -23,16 +35,37 @@ type page struct {
 
 var pages = map[string]page{
 	"index": {
-		data: pageData{Title: "crowdin-stats — live translation images for your README", ShowGetStarted: true},
+		data: pageData{
+			Title:          "crowdin-stats — live translation images for your README",
+			Description:    "Generate live, embeddable SVG images showing Crowdin translation progress and top contributors, without exposing your Crowdin token.",
+			Path:           "/",
+			ShowGetStarted: true,
+		},
 	},
 	"setup": {
-		data: pageData{Title: "Generate your images — crowdin-stats", ShowGetStarted: false, LivePreview: true},
+		data: pageData{
+			Title:          "Generate your images — crowdin-stats",
+			Description:    "Connect a Crowdin project and get back embed URLs for a translation progress table and contributor grid. Takes under a minute, no account required.",
+			Path:           "/setup",
+			ShowGetStarted: false,
+			LivePreview:    true,
+		},
 	},
 	"privacy": {
-		data: pageData{Title: "Privacy Policy — crowdin-stats", ShowGetStarted: true},
+		data: pageData{
+			Title:          "Privacy Policy — crowdin-stats",
+			Description:    "What crowdin-stats stores when you register a project, and how your Crowdin token is encrypted.",
+			Path:           "/privacy",
+			ShowGetStarted: true,
+		},
 	},
 	"terms": {
-		data: pageData{Title: "Terms of Service — crowdin-stats", ShowGetStarted: true},
+		data: pageData{
+			Title:          "Terms of Service — crowdin-stats",
+			Description:    "Terms governing use of crowdin-stats' free, self-hosted translation-image embeds.",
+			Path:           "/terms",
+			ShowGetStarted: true,
+		},
 	},
 }
 

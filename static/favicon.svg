@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <style>
+    .ring-track { stroke: #cddcfb; }
+    .ring-fill, .check { stroke: #2f6fed; }
+    @media (prefers-color-scheme: dark) {
+      .ring-track { stroke: #2b3340; }
+      .ring-fill, .check { stroke: #5b8dff; }
+    }
+  </style>
+  <circle class="ring-track" cx="12" cy="12" r="9" fill="none" stroke-width="2.8" />
+  <circle class="ring-fill" cx="12" cy="12" r="9" fill="none" stroke-width="2.8" stroke-linecap="round"
+    stroke-dasharray="42.4 56.5" transform="rotate(-90 12 12)" />
+  <path class="check" d="M8.4 12.3l2.2 2.2 4.6-4.8" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

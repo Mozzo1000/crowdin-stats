@@ -72,6 +72,7 @@ func main() {
 	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/overall.svg", s.handleOverallEmbed)
+	mux.HandleFunc("GET /embed/{publicID}/data.json", s.handleEmbedData)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -457,6 +458,146 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeSVG(w, svg)
+}
+
+// embedDataLanguage/embedDataContributor/embedDataResponse mirror the field
+// names static/embed-builder.js's client-side renderers expect (matching its
+// DEMO_LANGUAGES/DEMO_CONTRIBUTORS fixture shape), so the JS can feed real
+// data straight into the same render functions it already uses for the demo
+// preview.
+type embedDataLanguage struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	Percent           int    `json:"percent"`
+	ApprovalPercent   int    `json:"approvalPercent"`
+	WordsTotal        int    `json:"wordsTotal"`
+	WordsTranslated   int    `json:"wordsTranslated"`
+	WordsApproved     int    `json:"wordsApproved"`
+	PhrasesTotal      int    `json:"phrasesTotal"`
+	PhrasesTranslated int    `json:"phrasesTranslated"`
+	PhrasesApproved   int    `json:"phrasesApproved"`
+}
+
+type embedDataContributor struct {
+	Username string `json:"username"`
+	FullName string `json:"fullName"`
+	Amount   int64  `json:"amount"`
+	Avatar   string `json:"avatar"`
+}
+
+type embedDataResponse struct {
+	Languages    []embedDataLanguage    `json:"languages"`
+	Contributors []embedDataContributor `json:"contributors"`
+}
+
+// handleEmbedData serves the raw Crowdin data (languages + contributors)
+// behind the embed builder's live preview, decoupled from any
+// color/limit/progress/etc. display parameter. Those are render-only and
+// handled entirely client-side (see static/embed-builder.js); this endpoint
+// only varies by `unit`/`hideOwner`, the two params that actually change
+// which Crowdin report gets requested (see FetchTopMembers). That keeps the
+// cache key space small — at most 4 rows per project — so tweaking colors or
+// limits in the builder never burns the project's refresh-token budget
+// (github.com/Mozzo1000/crowdin-stats/issues/1).
+func (s *server) handleEmbedData(w http.ResponseWriter, r *http.Request) {
+	publicID := r.PathValue("publicID")
+	p, err := getProject(s.db, publicID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	unit := ReportUnit(r.URL.Query().Get("unit"))
+	switch unit {
+	case UnitWords, UnitStrings, UnitCharacters:
+	default:
+		unit = UnitWords
+	}
+	hideOwner := r.URL.Query().Get("hideOwner") == "true"
+
+	cacheKey := "data:" + publicID + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
+	body, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.fetchEmbedData(p, unit, hideOwner), s.noCache)
+	if err != nil {
+		s.handleEmbedDataError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	w.Write([]byte(body))
+}
+
+func (s *server) fetchEmbedData(p project, unit ReportUnit, hideOwner bool) fetchFunc {
+	return func(ctx context.Context) (string, error) {
+		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
+		if err != nil {
+			return "", err
+		}
+		langs, err := FetchLanguageProgress(ctx, token, p.crowdinProjectID)
+		if err != nil {
+			return "", err
+		}
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner)
+		if err != nil {
+			return "", err
+		}
+
+		resp := embedDataResponse{
+			Languages:    make([]embedDataLanguage, len(langs)),
+			Contributors: make([]embedDataContributor, len(contributors)),
+		}
+		for i, l := range langs {
+			resp.Languages[i] = embedDataLanguage{
+				ID:                l.LanguageID,
+				Name:              l.LanguageName,
+				Percent:           l.Percent,
+				ApprovalPercent:   l.ApprovalPercent,
+				WordsTotal:        l.WordsTotal,
+				WordsTranslated:   l.WordsTranslated,
+				WordsApproved:     l.WordsApproved,
+				PhrasesTotal:      l.PhrasesTotal,
+				PhrasesTranslated: l.PhrasesTranslated,
+				PhrasesApproved:   l.PhrasesApproved,
+			}
+		}
+		for i, c := range contributors {
+			resp.Contributors[i] = embedDataContributor{
+				Username: c.Username,
+				FullName: c.FullName,
+				Amount:   c.Amount,
+				Avatar:   c.AvatarURL,
+			}
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+}
+
+// handleEmbedDataError mirrors handleEmbedError's error classification but
+// responds with JSON rather than a placeholder SVG, since this endpoint is
+// consumed by fetch(), not <img src>.
+func (s *server) handleEmbedDataError(w http.ResponseWriter, err error) {
+	var status int
+	var message string
+	switch {
+	case errors.Is(err, errRateLimited):
+		status, message = http.StatusTooManyRequests, "rate limited, try again shortly"
+	case errors.Is(err, errCrowdinAuthInvalid):
+		slog.Warn("embed data fetch failed: token invalid", "error", err)
+		status, message = http.StatusBadGateway, "token invalid — re-run setup"
+	case errors.Is(err, errCrowdinProjectNotFound):
+		slog.Warn("embed data fetch failed: project not found", "error", err)
+		status, message = http.StatusBadGateway, "project not found — re-run setup"
+	default:
+		slog.Warn("embed data fetch failed", "error", err)
+		status, message = http.StatusBadGateway, "temporarily unavailable"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 // handleEmbedError always responds with a valid SVG image rather than a

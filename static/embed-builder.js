@@ -1,11 +1,14 @@
 // Shared "build your own embed" widget for the landing page and the setup
 // page. Two things live in this file:
 //
-// 1. A client-side port of cmd/crowdin-stats/render.go's SVG layout, used
-//    only for the live preview so tweaking colors/limit/unit updates
-//    instantly with no network round trip (and, on the landing page,
-//    without a registered project to fetch real data from). Keep this in
-//    sync with render.go if that file's layout constants change.
+// 1. A client-side port of cmd/crowdin-stats/render.go's SVG layout. On the
+//    landing page it renders static demo fixtures (no registered project to
+//    fetch real data from). On the setup page it renders real project data
+//    fetched once from /embed/{publicID}/data.json — tweaking colors,
+//    limit, progress, etc. re-renders locally with no further network
+//    round trip, so it can never burn the project's Crowdin refresh-token
+//    budget (see ensureLiveData below). Keep this in sync with render.go if
+//    that file's layout constants change.
 // 2. Widget wiring: reads the controls inside a `.embed-builder` root,
 //    re-renders the preview and the generated URL/markdown on every
 //    change.
@@ -367,6 +370,11 @@
       overallVariant: 'card',
       theme: siteIsDark ? 'dark' : 'light',
       colors: Object.assign({}, siteIsDark ? DARK_COLORS : DEFAULT_COLORS),
+      // live mode only: raw {languages, contributors} fetched once from
+      // /embed/{publicID}/data.json and re-rendered locally on every
+      // color/limit/progress/etc. change — see ensureLiveData below.
+      liveData: null,
+      liveDataKey: null,
     };
 
     var typeButtons = root.querySelectorAll('[data-embed-type]');
@@ -391,8 +399,41 @@
     var previewEl = root.querySelector('[data-builder-preview]');
     var urlEl = root.querySelector('[data-builder-url]');
     var copyBtn = root.querySelector('[data-builder-copy]');
-    var debounceTimer = null;
     var previewBlobURL = null;
+    var liveFetchInFlight = null;
+    var liveFetchToken = 0;
+
+    // Fetches the real Crowdin data exactly once per distinct (unit,
+    // hideOwner) combination — the only params that change what Crowdin
+    // report gets requested (see server-side handleEmbedData). Every other
+    // control (colors, limit, progress, etc.) is rendered from this same
+    // fetched data with no further network calls, so tweaking them can never
+    // burn the project's refresh-token budget.
+    function ensureLiveData() {
+      if (mode !== 'live') return;
+      var key = state.unit + '|' + state.hideOwner;
+      if (state.liveData && state.liveDataKey === key) return;
+      if (liveFetchInFlight === key) return;
+      liveFetchInFlight = key;
+      var token = ++liveFetchToken;
+      var qs = 'unit=' + encodeURIComponent(state.unit) + '&hideOwner=' + state.hideOwner;
+      fetch(baseEmbedURL + '/data.json?' + qs)
+        .then(function (res) {
+          if (!res.ok) throw new Error('data fetch failed');
+          return res.json();
+        })
+        .then(function (data) {
+          if (token !== liveFetchToken) return;
+          liveFetchInFlight = null;
+          state.liveData = data;
+          state.liveDataKey = key;
+          render();
+        })
+        .catch(function () {
+          if (token !== liveFetchToken) return;
+          liveFetchInFlight = null;
+        });
+    }
 
     function render() {
       typeButtons.forEach(function (btn) {
@@ -435,18 +476,28 @@
         }
       }
 
-      if (mode === 'demo' && (previewImg || previewEl)) {
+      if (previewImg || previewEl) {
+        ensureLiveData();
+        var haveData = mode === 'demo' || !!state.liveData;
+        var languages = mode === 'demo' ? DEMO_LANGUAGES : (haveData ? state.liveData.languages : []);
+        var contributors = mode === 'demo' ? DEMO_CONTRIBUTORS : (haveData ? state.liveData.contributors : []);
+
         var svg;
-        if (state.type === 'table') {
+        if (!haveData) {
+          var loadingWidth = state.type === 'overall'
+            ? (state.overallVariant === 'circle' ? CIRCLE.size : CARD.width)
+            : state.type === 'contributors' ? 320 : TABLE.width;
+          svg = emptyStateSVG(loadingWidth, 60, 'loading preview…', state.colors);
+        } else if (state.type === 'table') {
           var pinned = parseLanguagePins(state.tableLanguages);
-          var prepared = prepareTableLanguages(DEMO_LANGUAGES, state.tableProgress, state.tableMinPercent, state.tableLimit, pinned);
+          var prepared = prepareTableLanguages(languages, state.tableProgress, state.tableMinPercent, state.tableLimit, pinned);
           svg = renderTableSVG(prepared, state.colors);
         } else if (state.type === 'overall') {
           svg = state.overallVariant === 'circle'
-            ? renderOverallCircleSVG(DEMO_LANGUAGES, state.overallUnit, state.overallProgress, state.colors)
-            : renderOverallCardSVG(DEMO_LANGUAGES, state.overallUnit, state.overallMetric, state.overallProgress, state.colors);
+            ? renderOverallCircleSVG(languages, state.overallUnit, state.overallProgress, state.colors)
+            : renderOverallCardSVG(languages, state.overallUnit, state.overallMetric, state.overallProgress, state.colors);
         } else {
-          svg = renderContributorsSVG(DEMO_CONTRIBUTORS, state.limit, state.colors);
+          svg = renderContributorsSVG(contributors, state.limit, state.colors);
         }
         if (state.type === 'contributors') {
           // Contributor avatars are referenced by external <image href> —
@@ -461,7 +512,7 @@
             previewEl.innerHTML = svg;
           }
         } else if (previewImg) {
-          // Rendered through an <img> (like the live preview) rather than
+          // Rendered through an <img> (like the real embed) rather than
           // innerHTML, so table/overall previews get the same isolated
           // rendering context as the real embed instead of inheriting the
           // host page's font stack/CSS.
@@ -473,11 +524,6 @@
           previewBlobURL = url;
           previewImg.src = url;
         }
-      } else if (mode === 'live' && previewImg) {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(function () {
-          previewImg.src = fullURL + (fullURL.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
-        }, 400);
       }
     }
 

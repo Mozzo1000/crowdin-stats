@@ -49,6 +49,10 @@ locally too (e.g. via `docker compose`).
 See `docker-compose.yml`, `Dockerfile`, and `Caddyfile`. Copy `.env.example`
 to `.env`, fill in `MASTER_KEY` and `HOST`, then `docker compose up -d --build`.
 
+The app container runs as a non-root user (uid/gid `10001`), so the bind-mounted
+`./data` directory must be writable by that uid — run
+`mkdir -p data && sudo chown 10001:10001 data` before the first `docker compose up`.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).

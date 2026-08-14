@@ -19,6 +19,7 @@ import (
 type server struct {
 	db          *sql.DB
 	masterKey   [32]byte
+	baseURL     string
 	noCache     bool
 	noRateLimit bool
 }
@@ -39,6 +40,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	host := os.Getenv("HOST")
+	if host == "" {
+		slog.Error("startup failed", "error", "HOST environment variable must be set to the public hostname this instance is served from")
+		os.Exit(1)
+	}
+	baseURL := "https://" + host
+
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "./data/db.sqlite"
@@ -54,7 +62,7 @@ func main() {
 	stopCleanup := startCleanupTicker(db, func() int64 { return time.Now().Unix() })
 	defer stopCleanup()
 
-	s := &server{db: db, masterKey: masterKey, noCache: *noCache, noRateLimit: *noRateLimit}
+	s := &server{db: db, masterKey: masterKey, baseURL: baseURL, noCache: *noCache, noRateLimit: *noRateLimit}
 	if s.noCache {
 		slog.Warn("caching disabled — every embed request will hit Crowdin live (-no-cache)")
 	}
@@ -223,7 +231,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := hostBaseURL(r)
+	base := s.baseURL
 	tableURL := base + "/embed/" + publicID + "/table.svg"
 	contribURL := base + "/embed/" + publicID + "/contributors.svg?limit=30&unit=words"
 	overallURL := base + "/embed/" + publicID + "/overall.svg?unit=words&metric=both"
@@ -294,17 +302,6 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(listProjectsResponse{Projects: projects})
-}
-
-func hostBaseURL(r *http.Request) string {
-	if h := os.Getenv("HOST"); h != "" {
-		return "https://" + h
-	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	return scheme + "://" + r.Host
 }
 
 func trimToDigits(s string) string {

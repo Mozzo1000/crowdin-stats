@@ -31,7 +31,7 @@ func TestHandleEmbedDataDecryptFailure(t *testing.T) {
 	db := newTestDB(t)
 	s := &server{db: db, noCache: true}
 
-	if err := insertProject(db, "pid-bad-token", "12345", []byte("not-valid-ciphertext"), []byte("also-not-valid-nonce-000"), time.Now().Unix()); err != nil {
+	if err := insertProject(db, "pid-bad-token", "12345", []byte("not-valid-ciphertext"), []byte("also-not-valid-nonce-000"), time.Now().Unix(), "hash-bad-token"); err != nil {
 		t.Fatalf("insertProject: %v", err)
 	}
 

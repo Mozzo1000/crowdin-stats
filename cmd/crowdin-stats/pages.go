@@ -67,6 +67,14 @@ var pages = map[string]page{
 			ShowGetStarted: true,
 		},
 	},
+	"revoke": {
+		data: pageData{
+			Title:          "Revoke access — crowdin-stats",
+			Description:    "Revoke a crowdin-stats embed and remove its stored project data.",
+			Path:           "/revoke",
+			ShowGetStarted: false,
+		},
+	},
 }
 
 func init() {

@@ -34,11 +34,34 @@ func getProject(db *sql.DB, publicID string) (project, error) {
 	return p, nil
 }
 
-func insertProject(db *sql.DB, publicID, crowdinProjectID string, ciphertext, nonce []byte, createdAt int64) error {
+func insertProject(db *sql.DB, publicID, crowdinProjectID string, ciphertext, nonce []byte, createdAt int64, revokeTokenHash string) error {
 	_, err := db.Exec(
-		`INSERT INTO projects (public_id, crowdin_project_id, ciphertext, nonce, key_version, created_at, revoked)
-         VALUES (?, ?, ?, ?, 1, ?, 0)`,
-		publicID, crowdinProjectID, ciphertext, nonce, createdAt,
+		`INSERT INTO projects (public_id, crowdin_project_id, ciphertext, nonce, key_version, created_at, revoked, revoke_token_hash)
+         VALUES (?, ?, ?, ?, 1, ?, 0, ?)`,
+		publicID, crowdinProjectID, ciphertext, nonce, createdAt, revokeTokenHash,
 	)
+	return err
+}
+
+// getProjectByRevokeTokenHash looks up a project by its revoke token hash.
+// Unlike getProject, it distinguishes "not found" from "found but already
+// revoked" so the revoke handler can report which happened.
+func getProjectByRevokeTokenHash(db *sql.DB, hash string) (publicID string, revoked bool, err error) {
+	var r int
+	err = db.QueryRow(
+		`SELECT public_id, revoked FROM projects WHERE revoke_token_hash = ?`,
+		hash,
+	).Scan(&publicID, &r)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, errProjectNotFound
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return publicID, r != 0, nil
+}
+
+func revokeProject(db *sql.DB, publicID string) error {
+	_, err := db.Exec(`UPDATE projects SET revoked = 1 WHERE public_id = ?`, publicID)
 	return err
 }

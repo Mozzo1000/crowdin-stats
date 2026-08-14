@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS projects (
     nonce               BLOB NOT NULL,
     key_version         INTEGER NOT NULL DEFAULT 1,
     created_at          INTEGER NOT NULL,
-    revoked             INTEGER NOT NULL DEFAULT 0
+    revoked             INTEGER NOT NULL DEFAULT 0,
+    revoke_token_hash   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS cache (

@@ -2,7 +2,9 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -32,6 +34,24 @@ func encryptToken(key [32]byte, token string) (ciphertext, nonce []byte, err err
 	}
 	ct := secretbox.Seal(nil, []byte(token), &n, &key)
 	return ct, n[:], nil
+}
+
+// generateRevokeToken returns a fresh high-entropy revoke token and its
+// SHA-256 hash. The token is shown to the user exactly once (embedded in the
+// revoke URL); only its hash is ever persisted, so a leaked database can't
+// be used to revoke a project.
+func generateRevokeToken() (token, hash string, err error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", "", err
+	}
+	token = base64.RawURLEncoding.EncodeToString(raw)
+	return token, hashRevokeToken(token), nil
+}
+
+func hashRevokeToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 func decryptToken(key [32]byte, ciphertext, nonce []byte) (string, error) {

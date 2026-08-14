@@ -1,0 +1,60 @@
+{{define "extrahead"}}
+  <meta name="referrer" content="no-referrer" />
+  <meta name="robots" content="noindex, nofollow" />
+{{end}}
+
+{{define "main"}}
+  <main class="max-w-xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <h1 class="text-2xl font-semibold">Revoke this embed</h1>
+    <p class="mt-2 text-text-muted text-sm leading-relaxed">
+      This immediately and permanently disables the project's embed images — every
+      <code class="font-mono text-accent">/embed/&hellip;</code> URL for it starts returning a
+      "not found" placeholder. This can't be undone from here; if you need the embed back,
+      you'll have to run setup again.
+    </p>
+
+    <div id="confirm-panel" class="panel p-5 mt-8">
+      <button type="button" id="revoke-btn" class="btn-primary w-full">Revoke access</button>
+      <p id="revoke-error" class="hidden mt-3 text-sm text-red-600 dark:text-red-400"></p>
+    </div>
+
+    <div id="result-panel" class="hidden panel p-5 mt-8">
+      <p id="result-msg" class="text-sm text-text"></p>
+    </div>
+  </main>
+{{end}}
+
+{{define "extrascript"}}
+  <script>
+    const btn = document.getElementById('revoke-btn');
+    const confirmPanel = document.getElementById('confirm-panel');
+    const resultPanel = document.getElementById('result-panel');
+    const resultMsg = document.getElementById('result-msg');
+    const errorMsg = document.getElementById('revoke-error');
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Revoking…';
+      errorMsg.classList.add('hidden');
+
+      try {
+        const res = await fetch(window.location.pathname, { method: 'POST' });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || ('request failed with status ' + res.status));
+        }
+        const data = await res.json();
+        resultMsg.textContent = data.status === 'already_revoked'
+          ? 'This project was already revoked — nothing left to do.'
+          : 'Done — this project’s embed images are revoked and will stop working immediately.';
+        confirmPanel.classList.add('hidden');
+        resultPanel.classList.remove('hidden');
+      } catch (err) {
+        errorMsg.textContent = err.message || 'Something went wrong — try again in a moment.';
+        errorMsg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Revoke access';
+      }
+    });
+  </script>
+{{end}}

@@ -21,7 +21,7 @@ func newTestDB(t *testing.T) *sql.DB {
 func TestProjectRoundTrip(t *testing.T) {
 	db := newTestDB(t)
 
-	if err := insertProject(db, "pid-1", "12345", []byte("ct"), []byte("nonce-24-bytes-000000000"), time.Now().Unix()); err != nil {
+	if err := insertProject(db, "pid-1", "12345", []byte("ct"), []byte("nonce-24-bytes-000000000"), time.Now().Unix(), "hash-1"); err != nil {
 		t.Fatalf("insertProject: %v", err)
 	}
 
@@ -40,7 +40,7 @@ func TestProjectRoundTrip(t *testing.T) {
 
 func TestGetProjectRevoked(t *testing.T) {
 	db := newTestDB(t)
-	if err := insertProject(db, "pid-2", "999", []byte("ct"), []byte("n"), time.Now().Unix()); err != nil {
+	if err := insertProject(db, "pid-2", "999", []byte("ct"), []byte("n"), time.Now().Unix(), "hash-2"); err != nil {
 		t.Fatalf("insertProject: %v", err)
 	}
 	if _, err := db.Exec(`UPDATE projects SET revoked = 1 WHERE public_id = ?`, "pid-2"); err != nil {
@@ -48,6 +48,41 @@ func TestGetProjectRevoked(t *testing.T) {
 	}
 	if _, err := getProject(db, "pid-2"); err != errProjectNotFound {
 		t.Fatalf("expected errProjectNotFound for revoked project, got %v", err)
+	}
+}
+
+func TestRevokeProjectByToken(t *testing.T) {
+	db := newTestDB(t)
+	if err := insertProject(db, "pid-3", "111", []byte("ct"), []byte("n"), time.Now().Unix(), "hash-3"); err != nil {
+		t.Fatalf("insertProject: %v", err)
+	}
+
+	if _, _, err := getProjectByRevokeTokenHash(db, "no-such-hash"); err != errProjectNotFound {
+		t.Fatalf("expected errProjectNotFound for unknown hash, got %v", err)
+	}
+
+	publicID, revoked, err := getProjectByRevokeTokenHash(db, "hash-3")
+	if err != nil {
+		t.Fatalf("getProjectByRevokeTokenHash: %v", err)
+	}
+	if publicID != "pid-3" || revoked {
+		t.Fatalf("expected (pid-3, false), got (%s, %v)", publicID, revoked)
+	}
+
+	if err := revokeProject(db, publicID); err != nil {
+		t.Fatalf("revokeProject: %v", err)
+	}
+
+	_, revoked, err = getProjectByRevokeTokenHash(db, "hash-3")
+	if err != nil {
+		t.Fatalf("getProjectByRevokeTokenHash after revoke: %v", err)
+	}
+	if !revoked {
+		t.Fatalf("expected revoked=true after revokeProject")
+	}
+
+	if _, err := getProject(db, "pid-3"); err != errProjectNotFound {
+		t.Fatalf("expected errProjectNotFound for revoked project via getProject, got %v", err)
 	}
 }
 

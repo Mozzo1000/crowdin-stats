@@ -104,8 +104,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Delete the Personal Access Token in your Crowdin account. That's the real kill switch, and it works immediately, even before our cache expires.
-            If you'd also like your project removed from our database, email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your embed URL. We handle these by hand and usually get to it within a few days. There's no self-service delete button yet, so we'd rather tell you that up front than let you assume there is.
+            Use the revoke link you were given when you ran setup — it's shown once, right after your embed URLs, so save it somewhere at the time. Opening it and confirming immediately and permanently disables that project's embed images, no email or waiting required. Deleting the Personal Access Token in your Crowdin account works too, and even faster (it takes effect before our cache expires), but doesn't remove the project record itself the way the revoke link does. Lost your revoke link? Email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your embed URL and we'll handle it by hand.
           </p>
         </details>
         <details class="faq-item">
@@ -123,7 +122,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your image will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you send us that revoke email. It's a manual step on our end, not something that quietly expires on its own.
+            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your image will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you use your revoke link (or, lacking that, email us) to remove it. It doesn't quietly expire on its own.
           </p>
         </details>
         <details class="faq-item">

@@ -73,8 +73,10 @@ func main() {
 	mux.HandleFunc("GET /embed/{publicID}/contributors.svg", s.handleContributorsEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/overall.svg", s.handleOverallEmbed)
 	mux.HandleFunc("GET /embed/{publicID}/data.json", s.handleEmbedData)
+	mux.HandleFunc("GET /revoke/{token}", servePage("revoke"))
+	mux.HandleFunc("POST /revoke/{token}", s.handleRevoke)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(noDirListingFS{http.Dir("static")})))
 
 	addr := ":8080"
 	slog.Info("listening", "addr", addr)
@@ -131,6 +133,7 @@ type setupResponse struct {
 	ContributorsURL string `json:"contributors_url"`
 	OverallURL      string `json:"overall_url"`
 	Markdown        string `json:"markdown"`
+	RevokeURL       string `json:"revoke_url"`
 }
 
 func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -206,8 +209,15 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Token = "" // drop plaintext reference immediately after encryption
 
+	revokeToken, revokeTokenHash, err := generateRevokeToken()
+	if err != nil {
+		slog.Error("generate revoke token failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	publicID := uuid.NewString()
-	if err := insertProject(s.db, publicID, req.CrowdinProjectID, ciphertext, nonce, time.Now().Unix()); err != nil {
+	if err := insertProject(s.db, publicID, req.CrowdinProjectID, ciphertext, nonce, time.Now().Unix(), revokeTokenHash); err != nil {
 		slog.Error("insert project failed", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -224,6 +234,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		ContributorsURL: contribURL,
 		OverallURL:      overallURL,
 		Markdown:        "![Translation Progress](" + tableURL + ")\n![Overall](" + overallURL + ")\n![Contributors](" + contribURL + ")",
+		RevokeURL:       base + "/revoke/" + revokeToken,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -556,6 +567,51 @@ func (s *server) handleEmbedData(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(body))
 }
 
+type revokeResponse struct {
+	Status string `json:"status"` // "revoked" or "already_revoked"
+}
+
+// handleRevoke flips a project's revoked flag using the one-time secret
+// token handed back at setup time (never the public embed publicID). It's
+// idempotent: revoking an already-revoked project is not an error.
+func (s *server) handleRevoke(w http.ResponseWriter, r *http.Request) {
+	ip := clientIP(r)
+	if !s.noRateLimit {
+		if limited, retryAfter := rateLimited(s.db, "revoke:"+ip, 20, time.Hour); limited {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			http.Error(w, "too many revoke attempts from this network — try again in "+formatRetryAfter(retryAfter), http.StatusTooManyRequests)
+			return
+		}
+	}
+
+	token := r.PathValue("token")
+	publicID, revoked, err := getProjectByRevokeTokenHash(s.db, hashRevokeToken(token))
+	if errors.Is(err, errProjectNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		slog.Error("lookup revoke token failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if !revoked {
+		if err := revokeProject(s.db, publicID); err != nil {
+			slog.Error("revoke project failed", "error", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	status := "revoked"
+	if revoked {
+		status = "already_revoked"
+	}
+	json.NewEncoder(w).Encode(revokeResponse{Status: status})
+}
+
 func (s *server) fetchEmbedData(p project, unit ReportUnit, hideOwner bool) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
@@ -566,7 +622,10 @@ func (s *server) fetchEmbedData(p project, unit ReportUnit, hideOwner bool) fetc
 		if err != nil {
 			return "", err
 		}
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner)
+		// The builder preview slider varies `limit` entirely client-side
+		// (see handleEmbedData's comment above), so this endpoint must
+		// fetch avatars up to the largest limit the slider allows.
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, maxAvatarEmbeds)
 		if err != nil {
 			return "", err
 		}
@@ -688,12 +747,32 @@ func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideO
 		if err != nil {
 			return "", err
 		}
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner)
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, limit)
 		if err != nil {
 			return "", err
 		}
 		return renderContributorsSVG(contributors, limit, colors), nil
 	}
+}
+
+// noDirListingFS wraps an http.FileSystem so that opening a directory never
+// falls through to http.FileServer's default behavior of rendering a
+// directory listing — it 404s instead, since /static/ only ever needs to
+// serve individual named files (fonts, demo images, etc).
+type noDirListingFS struct {
+	fs http.FileSystem
+}
+
+func (n noDirListingFS) Open(name string) (http.File, error) {
+	f, err := n.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if info, err := f.Stat(); err == nil && info.IsDir() {
+		f.Close()
+		return nil, os.ErrNotExist
+	}
+	return f, nil
 }
 
 func writeSVG(w http.ResponseWriter, svg string) {

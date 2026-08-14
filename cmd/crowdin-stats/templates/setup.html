@@ -87,7 +87,10 @@
         <div class="panel p-4 flex flex-col">
           <p class="text-xs text-text-muted mb-3 font-mono">translation progress</p>
           <div class="overflow-x-auto mb-3">
-            <img id="preview-table-img" class="max-w-full" alt="Live translation progress preview" />
+            <div class="relative min-h-[64px]">
+              <div id="preview-table-skeleton" class="img-skeleton"></div>
+              <img id="preview-table-img" class="max-w-full relative opacity-0 transition-opacity duration-200" alt="Live translation progress preview" />
+            </div>
           </div>
           <pre id="markdown-table" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
           <button type="button" data-copy-target="markdown-table" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
@@ -96,7 +99,10 @@
         <div class="panel p-4 flex flex-col">
           <p class="text-xs text-text-muted mb-3 font-mono">contributors</p>
           <div class="overflow-x-auto mb-3">
-            <img id="preview-contrib-img" class="max-w-full" alt="Live contributors preview" />
+            <div class="relative min-h-[64px]">
+              <div id="preview-contrib-skeleton" class="img-skeleton"></div>
+              <img id="preview-contrib-img" class="max-w-full relative opacity-0 transition-opacity duration-200" alt="Live contributors preview" />
+            </div>
           </div>
           <pre id="markdown-contrib" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
           <button type="button" data-copy-target="markdown-contrib" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
@@ -105,7 +111,10 @@
         <div class="panel p-4 flex flex-col">
           <p class="text-xs text-text-muted mb-3 font-mono">overall — card</p>
           <div class="overflow-x-auto mb-3">
-            <img id="preview-overall-img" class="max-w-full" alt="Live overall progress preview (card)" />
+            <div class="relative min-h-[100px]">
+              <div id="preview-overall-skeleton" class="img-skeleton"></div>
+              <img id="preview-overall-img" class="max-w-full relative opacity-0 transition-opacity duration-200" alt="Live overall progress preview (card)" />
+            </div>
           </div>
           <pre id="markdown-overall" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
           <button type="button" data-copy-target="markdown-overall" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
@@ -114,7 +123,10 @@
         <div class="panel p-4 flex flex-col">
           <p class="text-xs text-text-muted mb-3 font-mono">overall — circle</p>
           <div class="overflow-x-auto mb-3">
-            <img id="preview-overall-circle-img" class="max-w-full" alt="Live overall progress preview (circle)" />
+            <div class="relative min-h-[100px]">
+              <div id="preview-overall-circle-skeleton" class="img-skeleton"></div>
+              <img id="preview-overall-circle-img" class="max-w-full relative opacity-0 transition-opacity duration-200" alt="Live overall progress preview (circle)" />
+            </div>
           </div>
           <pre id="markdown-overall-circle" class="field-mono w-full whitespace-pre-wrap break-all text-xs mt-auto"></pre>
           <button type="button" data-copy-target="markdown-overall-circle" class="copy-md-btn mt-3 text-sm text-accent hover:underline self-start">Copy markdown</button>
@@ -159,6 +171,26 @@
     // theme just like the embed builder below them.
     let baseEmbedURLs = null;
 
+    // Shows the shimmering placeholder again and fades the <img> out while a
+    // new src loads, then swaps back once it (or its error) fires — so
+    // re-renders triggered by a theme toggle get the same loading state as
+    // the very first load.
+    function setPreviewLoading(imgId, skeletonId, url) {
+      const img = document.getElementById(imgId);
+      const skeleton = document.getElementById(skeletonId);
+      img.classList.remove('opacity-100');
+      img.classList.add('opacity-0');
+      skeleton.classList.remove('hidden');
+      const reveal = () => {
+        img.classList.remove('opacity-0');
+        img.classList.add('opacity-100');
+        skeleton.classList.add('hidden');
+      };
+      img.addEventListener('load', reveal, { once: true });
+      img.addEventListener('error', reveal, { once: true });
+      img.src = url;
+    }
+
     function renderPreviewImages() {
       if (!baseEmbedURLs) return;
       const dark = document.documentElement.classList.contains('dark');
@@ -169,13 +201,13 @@
       const overallURL = withTheme(baseEmbedURLs.overall);
       const overallCircleURL = withTheme(baseEmbedURLs.overallCircle);
 
-      document.getElementById('preview-table-img').src = tableURL;
+      setPreviewLoading('preview-table-img', 'preview-table-skeleton', tableURL);
       document.getElementById('markdown-table').textContent = `![Translation Progress](${tableURL})`;
-      document.getElementById('preview-contrib-img').src = contributorsURL;
+      setPreviewLoading('preview-contrib-img', 'preview-contrib-skeleton', contributorsURL);
       document.getElementById('markdown-contrib').textContent = `![Contributors](${contributorsURL})`;
-      document.getElementById('preview-overall-img').src = overallURL;
+      setPreviewLoading('preview-overall-img', 'preview-overall-skeleton', overallURL);
       document.getElementById('markdown-overall').textContent = `![Overall](${overallURL})`;
-      document.getElementById('preview-overall-circle-img').src = overallCircleURL;
+      setPreviewLoading('preview-overall-circle-img', 'preview-overall-circle-skeleton', overallCircleURL);
       document.getElementById('markdown-overall-circle').textContent = `![Overall](${overallCircleURL})`;
     }
 

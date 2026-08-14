@@ -114,4 +114,23 @@
   .faq-item[open] .chevron {
     transform: rotate(180deg);
   }
+
+  /* Placeholder shown over a preview image while it's still loading its
+     live data — swapped out for the real image once it fires `load`. */
+  .img-skeleton {
+    @apply absolute inset-0 rounded-lg bg-bg-subtle overflow-hidden;
+  }
+  .img-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    animation: img-skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes img-skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
 }

@@ -11,6 +11,15 @@ import (
 
 const (
 	cacheTTL = 12 * time.Hour
+
+	// backgroundRefreshTimeout must cover the slowest fetch it can be asked
+	// to run: FetchTopMembers' report-generation polling
+	// (reportGenerationTimeout, crowdin.go) followed by its avatar embedding
+	// (avatarFetchWorstCase, avatar.go), plus a margin for the rest of the
+	// round trip. A shorter budget guarantees slow refreshes get cancelled
+	// mid-flight and never reach setCache, leaving a stale embed stuck
+	// stale forever (see issue #5).
+	backgroundRefreshTimeout = reportGenerationTimeout + avatarFetchWorstCase + 30*time.Second
 )
 
 var refreshGroup singleflight.Group
@@ -72,7 +81,7 @@ func getOrRefresh(ctx context.Context, db *sql.DB, key, refreshRateKey string, f
 		// Stale: serve what we have, refresh in the background if allowed.
 		if limited, _ := rateLimited(db, "refresh:"+refreshRateKey, 20, time.Hour); !limited {
 			go func() {
-				bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				bgCtx, cancel := context.WithTimeout(context.Background(), backgroundRefreshTimeout)
 				defer cancel()
 				_, _, _ = refreshGroup.Do(key, func() (interface{}, error) {
 					svg, err := fetch(bgCtx)

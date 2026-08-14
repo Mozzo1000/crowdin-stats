@@ -22,6 +22,13 @@ import (
 // expiring around the same time and hammering Crowdin at once.
 var outboundLimiter = rate.NewLimiter(rate.Limit(5), 10)
 
+// reportGenerationTimeout bounds how long FetchTopMembers will wait for
+// Crowdin's async report generation to finish. Callers that also embed
+// avatars afterwards (see avatarFetchWorstCase in avatar.go) must give the
+// overall operation at least this much time on top of that, or a slow
+// report generation alone can exhaust the caller's deadline.
+const reportGenerationTimeout = 60 * time.Second
+
 // LanguageProgress is the render-ready shape consumed by renderTableSVG and,
 // aggregated across all languages, by the overall.svg renderers. It carries
 // both translation and approval figures so callers can pick which one to
@@ -300,7 +307,7 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	}
 
 	reportID := status.Identifier
-	deadline := time.Now().Add(60 * time.Second)
+	deadline := time.Now().Add(reportGenerationTimeout)
 	for status.Status != "finished" {
 		if time.Now().After(deadline) {
 			return nil, errors.New("timed out waiting for Crowdin report generation")

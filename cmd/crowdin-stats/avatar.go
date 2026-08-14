@@ -30,6 +30,13 @@ const (
 	avatarFetchParallel = 6
 )
 
+// avatarFetchWorstCase is the longest embedAvatarsAsDataURIs can run: every
+// one of maxAvatarEmbeds avatars times out serially in batches of
+// avatarFetchParallel. Callers that bound the surrounding fetch (e.g. the
+// background cache refresh in cache.go) must budget at least this much time
+// on top of whatever the data fetch itself needs.
+const avatarFetchWorstCase = ((maxAvatarEmbeds + avatarFetchParallel - 1) / avatarFetchParallel) * avatarFetchTimeout
+
 // embedAvatarsAsDataURIs fetches each contributor's avatar server-side and
 // replaces AvatarURL with a data: URI, or clears it on any failure so
 // renderContributorsSVG falls back to its initials circle. Only the

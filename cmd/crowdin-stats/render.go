@@ -362,7 +362,6 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 
 		fmt.Fprintf(&b, `<clipPath id="%s"><circle cx="%d" cy="%d" r="%d"/></clipPath>`,
 			clipID, cx, cy, avatarSize/2)
-		fmt.Fprintf(&b, `<a href="https://crowdin.com/profile/%s" target="_blank">`, html.EscapeString(c.Username))
 		fmt.Fprintf(&b, `<title>%s</title>`, html.EscapeString(title))
 		if c.AvatarURL != "" {
 			fmt.Fprintf(&b, `<image href="%s" x="%d" y="%d" width="%d" height="%d" clip-path="url(#%s)" preserveAspectRatio="xMidYMid slice"/>`,
@@ -378,7 +377,6 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 		}
 		fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="1"/>`,
 			cx, cy, avatarSize/2, colors.Border())
-		b.WriteString(`</a>`)
 	}
 	b.WriteString(`</svg>`)
 	return b.String()

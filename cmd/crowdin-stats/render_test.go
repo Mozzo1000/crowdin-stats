@@ -41,14 +41,20 @@ func TestRenderTableSVGCustomColors(t *testing.T) {
 
 func TestRenderContributorsSVG(t *testing.T) {
 	svg := renderContributorsSVG([]Contributor{
-		{Username: "alice", FullName: "Alice A", Amount: 100},
-		{Username: "bob", FullName: "Bob B", Amount: 50},
+		{Username: "alice", Amount: 100},
+		{Username: "bob", Amount: 50},
 	}, 30, defaultEmbedColors)
 	if !strings.HasPrefix(svg, "<svg") {
 		t.Fatalf("expected svg output, got: %s", svg)
 	}
 	if !strings.Contains(svg, "alice") || !strings.Contains(svg, "bob") {
 		t.Fatalf("expected usernames in output: %s", svg)
+	}
+	// Avatars are only ever consumed via <img src=...> embeds, where links
+	// inside the SVG's own DOM never activate (see #28) — the wrapping <a>
+	// is dead weight and must not be re-added.
+	if strings.Contains(svg, "<a ") || strings.Contains(svg, "crowdin.com/profile") {
+		t.Fatalf("expected no dead <a> links in output: %s", svg)
 	}
 }
 

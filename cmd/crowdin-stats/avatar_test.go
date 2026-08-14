@@ -79,9 +79,9 @@ func TestEmbedAvatarsAsDataURIsRespectsLimit(t *testing.T) {
 	defer srv.Close()
 
 	client := srv.Client()
-	orig := http.DefaultClient
-	http.DefaultClient = client
-	defer func() { http.DefaultClient = orig }()
+	orig := avatarHTTPClient
+	avatarHTTPClient = client
+	defer func() { avatarHTTPClient = orig }()
 
 	contributors := make([]Contributor, 10)
 	for i := range contributors {
@@ -116,12 +116,28 @@ func TestFetchAvatarDataURIHTTPS(t *testing.T) {
 	defer srv.Close()
 
 	client := srv.Client()
-	orig := http.DefaultClient
-	http.DefaultClient = client
-	defer func() { http.DefaultClient = orig }()
+	orig := avatarHTTPClient
+	avatarHTTPClient = client
+	defer func() { avatarHTTPClient = orig }()
 
 	got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png")
 	if !strings.HasPrefix(got, "data:image/png;base64,") {
 		t.Fatalf("expected a data URI, got %q", got)
+	}
+}
+
+func TestFetchAvatarDataURIBlocksLoopback(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write([]byte("fake-png-bytes"))
+	}))
+	defer srv.Close()
+
+	// Deliberately don't swap avatarHTTPClient here: this exercises the
+	// real guarded client against a server that is genuinely listening and
+	// would otherwise respond successfully, to confirm it's the dial-time
+	// SSRF guard rejecting the loopback address rather than anything else.
+	if got := fetchAvatarDataURI(context.Background(), srv.URL+"/avatar.png"); got != "" {
+		t.Fatalf("expected loopback address to be blocked by SSRF guard, got %q", got)
 	}
 }

@@ -208,6 +208,10 @@ func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]Lang
 // quoted string (observed on user.id, translated, and approved) rather than
 // a bare number — a plain int or json.Number field hard-fails on that quoted
 // form, which was silently breaking every contributors.svg render.
+//
+// Values that don't parse as an integer (e.g. "12.5", or an unexpected type)
+// coerce to 0 rather than erroring, so one malformed row doesn't abort the
+// decode of the entire report.
 type flexibleInt int64
 
 func (f *flexibleInt) UnmarshalJSON(b []byte) error {
@@ -218,7 +222,8 @@ func (f *flexibleInt) UnmarshalJSON(b []byte) error {
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return fmt.Errorf("flexibleInt: %w", err)
+		*f = 0
+		return nil
 	}
 	*f = flexibleInt(n)
 	return nil

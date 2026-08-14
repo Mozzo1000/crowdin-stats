@@ -93,16 +93,6 @@ func hexChannels(hex string) (r, g, b int) {
 	return int(rv), int(gv), int(bv)
 }
 
-// cacheKeyFragment renders the colors into a stable string so different
-// color combinations don't collide in the embed cache table. auto must be
-// included: it changes the rendered markup (an embedded style block plus
-// var() references) even when bg/text/muted/accent/border — the light
-// defaults auto starts from — are otherwise identical to an explicit,
-// non-auto light request.
-func (c embedColors) cacheKeyFragment() string {
-	return fmt.Sprintf("bg=%s:text=%s:muted=%s:accent=%s:border=%s:auto=%t", c.bg, c.text, c.muted, c.accent, c.border, c.auto)
-}
-
 // Bg, Text, Muted, Accent, and Border are what renderers use in place of the
 // bg/text/muted/accent/border fields directly: in auto mode they return a
 // var(--cs-*) reference (defined by autoThemeStyle) instead of the literal
@@ -234,21 +224,6 @@ func parseLanguagePins(raw string) map[string]bool {
 		}
 	}
 	return out
-}
-
-// pinnedCacheKeyFragment renders a pinned-language set into a stable,
-// order-independent string, so "?languages=fr,de" and "?languages=de, fr"
-// share one cache entry instead of fragmenting on formatting differences.
-func pinnedCacheKeyFragment(pinned map[string]bool) string {
-	if len(pinned) == 0 {
-		return ""
-	}
-	names := make([]string, 0, len(pinned))
-	for name := range pinned {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return strings.Join(names, ",")
 }
 
 // renderTableSVG renders a horizontal progress bar per language.

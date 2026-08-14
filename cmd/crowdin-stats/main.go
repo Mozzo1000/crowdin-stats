@@ -453,18 +453,13 @@ func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 
 	pinned := parseLanguagePins(q.Get("languages"))
 
-	cacheKey := "table:" + publicID +
-		":progress=" + string(progressType) +
-		":limit=" + strconv.Itoa(limit) +
-		":minPercent=" + strconv.Itoa(minPercent) +
-		":languages=" + pinnedCacheKeyFragment(pinned) +
-		":" + colors.cacheKeyFragment()
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderTable(p, progressType, limit, minPercent, pinned, colors), s.noCache)
+	langs, err := s.getLanguageData(r.Context(), publicID, p)
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
 	}
-	writeSVG(w, svg)
+	langs = prepareTableLanguages(langs, progressType, minPercent, limit, pinned)
+	writeSVG(w, renderTableSVG(langs, colors))
 }
 
 func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request) {
@@ -498,13 +493,12 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
 
-	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner) + ":" + colors.cacheKeyFragment()
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner, colors), s.noCache)
+	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner)
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
 	}
-	writeSVG(w, svg)
+	writeSVG(w, renderContributorsSVG(contributors, limit, colors))
 }
 
 func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
@@ -531,29 +525,26 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 		variant = "card"
 	}
 
-	// metric only applies to the card variant; normalized to a fixed
-	// placeholder for circle so ?metric=percentage and ?metric=fraction
-	// don't cache as separate (but visually identical) entries.
+	// metric only applies to the card variant.
 	metric := OverallMetric(q.Get("metric"))
-	metricKey := string(metric)
-	if variant == "circle" {
-		metricKey = "n/a"
-	} else {
+	if variant != "circle" {
 		switch metric {
 		case MetricPercentage, MetricFraction, MetricBoth:
 		default:
 			metric = MetricBoth
 		}
-		metricKey = string(metric)
 	}
 
-	cacheKey := "overall:" + publicID + ":unit=" + string(unit) + ":progress=" + string(progressType) + ":metric=" + metricKey + ":variant=" + variant + ":" + colors.cacheKeyFragment()
-	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderOverall(p, unit, metric, progressType, variant, colors), s.noCache)
+	langs, err := s.getLanguageData(r.Context(), publicID, p)
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
 	}
-	writeSVG(w, svg)
+	if variant == "circle" {
+		writeSVG(w, renderOverallCircleSVG(langs, unit, progressType, colors))
+		return
+	}
+	writeSVG(w, renderOverallCardSVG(langs, unit, metric, progressType, colors))
 }
 
 // embedDataLanguage/embedDataContributor/embedDataResponse mirror the field
@@ -591,10 +582,10 @@ type embedDataResponse struct {
 // color/limit/progress/etc. display parameter. Those are render-only and
 // handled entirely client-side (see static/embed-builder.js); this endpoint
 // only varies by `unit`/`hideOwner`, the two params that actually change
-// which Crowdin report gets requested (see FetchTopMembers). That keeps the
-// cache key space small — at most 4 rows per project — so tweaking colors or
-// limits in the builder never burns the project's refresh-token budget
-// (github.com/Mozzo1000/crowdin-stats/issues/1).
+// which Crowdin report gets requested (see FetchTopMembers). It shares its
+// underlying dataset cache (getLanguageData/getContributorData) with the SVG
+// embed routes, so tweaking colors or limits anywhere never burns the
+// project's refresh-token budget (github.com/Mozzo1000/crowdin-stats/issues/2).
 func (s *server) handleEmbedData(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
 	p, err := getProject(s.db, publicID)
@@ -611,15 +602,52 @@ func (s *server) handleEmbedData(w http.ResponseWriter, r *http.Request) {
 	}
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
 
-	cacheKey := "data:" + publicID + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
-	body, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.fetchEmbedData(p, unit, hideOwner), s.noCache)
+	langs, err := s.getLanguageData(r.Context(), publicID, p)
+	if err != nil {
+		s.handleEmbedDataError(w, err)
+		return
+	}
+	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner)
+	if err != nil {
+		s.handleEmbedDataError(w, err)
+		return
+	}
+
+	resp := embedDataResponse{
+		Languages:    make([]embedDataLanguage, len(langs)),
+		Contributors: make([]embedDataContributor, len(contributors)),
+	}
+	for i, l := range langs {
+		resp.Languages[i] = embedDataLanguage{
+			ID:                l.LanguageID,
+			Name:              l.LanguageName,
+			Percent:           l.Percent,
+			ApprovalPercent:   l.ApprovalPercent,
+			WordsTotal:        l.WordsTotal,
+			WordsTranslated:   l.WordsTranslated,
+			WordsApproved:     l.WordsApproved,
+			PhrasesTotal:      l.PhrasesTotal,
+			PhrasesTranslated: l.PhrasesTranslated,
+			PhrasesApproved:   l.PhrasesApproved,
+		}
+	}
+	for i, c := range contributors {
+		resp.Contributors[i] = embedDataContributor{
+			Username: c.Username,
+			FullName: c.FullName,
+			Amount:   c.Amount,
+			Avatar:   c.AvatarURL,
+		}
+	}
+
+	b, err := json.Marshal(resp)
 	if err != nil {
 		s.handleEmbedDataError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Write([]byte(body))
+	w.Write(b)
 }
 
 type revokeResponse struct {
@@ -668,7 +696,18 @@ func (s *server) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(revokeResponse{Status: status})
 }
 
-func (s *server) fetchEmbedData(p project, unit ReportUnit, hideOwner bool) fetchFunc {
+// getLanguageData and getContributorData cache only the Crowdin *data fetch*
+// (via getOrRefresh), keyed solely by the params that actually change what's
+// requested from Crowdin. All display params (colors, limit, progress,
+// minPercent, pinned languages, metric, variant, ...) are applied afterwards
+// by the pure render functions in render.go against the shared dataset, so
+// they never grow the cache table or the project's refresh-rate budget — see
+// github.com/Mozzo1000/crowdin-stats/issues/2.
+//
+// table.svg and overall.svg share one "langdata:" dataset (both only ever
+// call FetchLanguageProgress, which has no display params of its own).
+
+func (s *server) fetchLanguageData(p project) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
@@ -678,47 +717,60 @@ func (s *server) fetchEmbedData(p project, unit ReportUnit, hideOwner bool) fetc
 		if err != nil {
 			return "", err
 		}
-		// The builder preview slider varies `limit` entirely client-side
-		// (see handleEmbedData's comment above), so this endpoint must
-		// fetch avatars up to the largest limit the slider allows.
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, maxAvatarEmbeds)
-		if err != nil {
-			return "", err
-		}
-
-		resp := embedDataResponse{
-			Languages:    make([]embedDataLanguage, len(langs)),
-			Contributors: make([]embedDataContributor, len(contributors)),
-		}
-		for i, l := range langs {
-			resp.Languages[i] = embedDataLanguage{
-				ID:                l.LanguageID,
-				Name:              l.LanguageName,
-				Percent:           l.Percent,
-				ApprovalPercent:   l.ApprovalPercent,
-				WordsTotal:        l.WordsTotal,
-				WordsTranslated:   l.WordsTranslated,
-				WordsApproved:     l.WordsApproved,
-				PhrasesTotal:      l.PhrasesTotal,
-				PhrasesTranslated: l.PhrasesTranslated,
-				PhrasesApproved:   l.PhrasesApproved,
-			}
-		}
-		for i, c := range contributors {
-			resp.Contributors[i] = embedDataContributor{
-				Username: c.Username,
-				FullName: c.FullName,
-				Amount:   c.Amount,
-				Avatar:   c.AvatarURL,
-			}
-		}
-
-		b, err := json.Marshal(resp)
+		b, err := json.Marshal(langs)
 		if err != nil {
 			return "", err
 		}
 		return string(b), nil
 	}
+}
+
+func (s *server) getLanguageData(ctx context.Context, publicID string, p project) ([]LanguageProgress, error) {
+	cacheKey := "langdata:" + publicID
+	body, err := getOrRefresh(ctx, s.db, cacheKey, publicID, s.fetchLanguageData(p), s.noCache)
+	if err != nil {
+		return nil, err
+	}
+	var langs []LanguageProgress
+	if err := json.Unmarshal([]byte(body), &langs); err != nil {
+		return nil, err
+	}
+	return langs, nil
+}
+
+// fetchContributorData always fetches avatars up to maxAvatarEmbeds
+// regardless of the caller's requested `limit`, so any limit up to that cap
+// can be served by truncating this same cached dataset in
+// renderContributorsSVG instead of triggering a distinct fetch/cache row.
+func (s *server) fetchContributorData(p project, unit ReportUnit, hideOwner bool) fetchFunc {
+	return func(ctx context.Context) (string, error) {
+		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
+		if err != nil {
+			return "", err
+		}
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, maxAvatarEmbeds)
+		if err != nil {
+			return "", err
+		}
+		b, err := json.Marshal(contributors)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+}
+
+func (s *server) getContributorData(ctx context.Context, publicID string, p project, unit ReportUnit, hideOwner bool) ([]Contributor, error) {
+	cacheKey := "contrib-data:" + publicID + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
+	body, err := getOrRefresh(ctx, s.db, cacheKey, publicID, s.fetchContributorData(p, unit, hideOwner), s.noCache)
+	if err != nil {
+		return nil, err
+	}
+	var contributors []Contributor
+	if err := json.Unmarshal([]byte(body), &contributors); err != nil {
+		return nil, err
+	}
+	return contributors, nil
 }
 
 // handleEmbedDataError mirrors handleEmbedError's error classification but
@@ -762,52 +814,6 @@ func (s *server) handleEmbedError(w http.ResponseWriter, err error, colors embed
 	default:
 		slog.Warn("embed render failed", "error", err)
 		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "temporarily unavailable", colors), errorSVGMaxAge)
-	}
-}
-
-func (s *server) renderTable(p project, progressType ProgressType, limit, minPercent int, pinned map[string]bool, colors embedColors) fetchFunc {
-	return func(ctx context.Context) (string, error) {
-		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
-		if err != nil {
-			return "", err
-		}
-		langs, err := FetchLanguageProgress(ctx, token, p.crowdinProjectID)
-		if err != nil {
-			return "", err
-		}
-		langs = prepareTableLanguages(langs, progressType, minPercent, limit, pinned)
-		return renderTableSVG(langs, colors), nil
-	}
-}
-
-func (s *server) renderOverall(p project, unit OverallUnit, metric OverallMetric, progressType ProgressType, variant string, colors embedColors) fetchFunc {
-	return func(ctx context.Context) (string, error) {
-		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
-		if err != nil {
-			return "", err
-		}
-		langs, err := FetchLanguageProgress(ctx, token, p.crowdinProjectID)
-		if err != nil {
-			return "", err
-		}
-		if variant == "circle" {
-			return renderOverallCircleSVG(langs, unit, progressType, colors), nil
-		}
-		return renderOverallCardSVG(langs, unit, metric, progressType, colors), nil
-	}
-}
-
-func (s *server) renderContributors(p project, limit int, unit ReportUnit, hideOwner bool, colors embedColors) fetchFunc {
-	return func(ctx context.Context) (string, error) {
-		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
-		if err != nil {
-			return "", err
-		}
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, limit)
-		if err != nil {
-			return "", err
-		}
-		return renderContributorsSVG(contributors, limit, colors), nil
 	}
 }
 

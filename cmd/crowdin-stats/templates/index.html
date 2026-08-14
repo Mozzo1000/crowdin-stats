@@ -104,7 +104,7 @@
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Use the revoke link you were given when you ran setup — it's shown once, right after your embed URLs, so save it somewhere at the time. Opening it and confirming immediately and permanently disables that project's embed images, no email or waiting required. Deleting the Personal Access Token in your Crowdin account works too, and even faster (it takes effect before our cache expires), but doesn't remove the project record itself the way the revoke link does. Lost your revoke link? Email <a class="text-accent hover:underline" href="mailto:revoke@crowdin-stats.rewake.org">revoke@crowdin-stats.rewake.org</a> with your embed URL and we'll handle it by hand.
+            Use the revoke link you were given when you ran setup — it's shown once, right after your embed URLs, so save it somewhere at the time. Opening it and confirming immediately and permanently disables that project's embed images, no waiting required. Deleting the Personal Access Token in your Crowdin account works too, and even faster (it takes effect before our cache expires), but doesn't remove the project record itself the way the revoke link does. A lost revoke link can't be recovered — deleting the Crowdin token is what actually matters, since it cuts off access immediately and leaves the leftover database row encrypted and useless.
           </p>
         </details>
         <details class="faq-item">
@@ -118,11 +118,11 @@
         </details>
         <details class="faq-item">
           <summary>
-            What happens if I delete my Crowdin token but forget to email you?
+            What happens if I delete my Crowdin token but don't revoke here?
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </summary>
           <p class="pb-4 text-text-muted text-sm leading-relaxed">
-            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your image will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you use your revoke link (or, lacking that, email us) to remove it. It doesn't quietly expire on its own.
+            Nothing dramatic. On the next cache refresh Crowdin will start returning an error, and your image will keep showing its last known state until that stops working too, at which point it just goes stale. Your project stays in our database, encrypted and useless without a valid token, until you use your revoke link to remove it. It doesn't quietly expire on its own — see the previous question if that link is lost.
           </p>
         </details>
         <details class="faq-item">

@@ -73,9 +73,9 @@ account. This takes effect immediately and requires no action from us —
 the service simply loses the ability to call Crowdin on your behalf on its
 next refresh.
 
-To also have your project's row removed from our database, email
-`revoke@crowdin-stats.rewake.org` with your embed URL. We process these manually; there
-is no automated self-service deletion in the current version.
+To also have your project's row removed from our database, use the revoke
+link you were given when you ran setup — it's self-service and takes effect
+immediately, no request or waiting required.
 
 ## Key rotation
 
@@ -110,7 +110,8 @@ page.
 
 ## Reporting a vulnerability
 
-If you believe you've found a security issue, please email
-`security@crowdin-stats.rewake.org` rather than opening a public issue. We'll
-acknowledge reports within a reasonable timeframe and credit responsible
-disclosures unless you'd prefer otherwise.
+If you believe you've found a security issue, please use GitHub's private
+vulnerability reporting on this repository (Security tab → "Report a
+vulnerability") rather than opening a public issue. We'll acknowledge
+reports within a reasonable timeframe and credit responsible disclosures
+unless you'd prefer otherwise.

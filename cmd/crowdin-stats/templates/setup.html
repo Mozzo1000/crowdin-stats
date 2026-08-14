@@ -153,6 +153,35 @@
     const patInstructions = document.getElementById('pat-instructions');
     const termsNotice = document.getElementById('terms-notice');
 
+    // Base (theme-less) embed URLs for the "live data" preview grid, set
+    // once the images are generated. Re-rendered with/without &theme=dark
+    // whenever the site theme toggles, so these previews track the site's
+    // theme just like the embed builder below them.
+    let baseEmbedURLs = null;
+
+    function renderPreviewImages() {
+      if (!baseEmbedURLs) return;
+      const dark = document.documentElement.classList.contains('dark');
+      const withTheme = (url) => dark ? url + (url.includes('?') ? '&' : '?') + 'theme=dark' : url;
+
+      const tableURL = withTheme(baseEmbedURLs.table);
+      const contributorsURL = withTheme(baseEmbedURLs.contributors);
+      const overallURL = withTheme(baseEmbedURLs.overall);
+      const overallCircleURL = withTheme(baseEmbedURLs.overallCircle);
+
+      document.getElementById('preview-table-img').src = tableURL;
+      document.getElementById('markdown-table').textContent = `![Translation Progress](${tableURL})`;
+      document.getElementById('preview-contrib-img').src = contributorsURL;
+      document.getElementById('markdown-contrib').textContent = `![Contributors](${contributorsURL})`;
+      document.getElementById('preview-overall-img').src = overallURL;
+      document.getElementById('markdown-overall').textContent = `![Overall](${overallURL})`;
+      document.getElementById('preview-overall-circle-img').src = overallCircleURL;
+      document.getElementById('markdown-overall-circle').textContent = `![Overall](${overallCircleURL})`;
+    }
+
+    new MutationObserver(renderPreviewImages)
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
     // Debounce project lookups so we're not hitting the Crowdin API on
     // every keystroke while the user is still typing/pasting their token.
     const PROJECT_LOOKUP_DEBOUNCE_MS = 600;
@@ -338,16 +367,13 @@
       patInstructions.classList.add('hidden');
       termsNotice.classList.add('hidden');
 
-      const overallCircleURL = data.overall_url + '&variant=circle';
-
-      document.getElementById('preview-table-img').src = data.table_url;
-      document.getElementById('markdown-table').textContent = `![Translation Progress](${data.table_url})`;
-      document.getElementById('preview-contrib-img').src = data.contributors_url;
-      document.getElementById('markdown-contrib').textContent = `![Contributors](${data.contributors_url})`;
-      document.getElementById('preview-overall-img').src = data.overall_url;
-      document.getElementById('markdown-overall').textContent = `![Overall](${data.overall_url})`;
-      document.getElementById('preview-overall-circle-img').src = overallCircleURL;
-      document.getElementById('markdown-overall-circle').textContent = `![Overall](${overallCircleURL})`;
+      baseEmbedURLs = {
+        table: data.table_url,
+        contributors: data.contributors_url,
+        overall: data.overall_url,
+        overallCircle: data.overall_url + '&variant=circle',
+      };
+      renderPreviewImages();
       results.classList.remove('hidden');
 
       CrowdinStatsEmbedBuilder.init(document.querySelector('.embed-builder'), {

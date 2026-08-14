@@ -76,12 +76,13 @@ func TestContributorsEmbedCacheBoundedByUnitAndHideOwner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	setCache(db, "contrib-data:pid-contrib:unit=words:hideOwner=false", string(b), cacheTTL)
+	// limit=5 and limit=25 both round up to the 30-avatar tier, so seeding
+	// that row alone must satisfy both requests below.
+	setCache(db, "contrib-data:pid-contrib:unit=words:hideOwner=false:avatars=30", string(b), cacheTTL)
 
 	urls := []string{
 		"/embed/pid-contrib/contributors.svg?bg=ff0000&limit=5",
-		"/embed/pid-contrib/contributors.svg?bg=00ff00&limit=50",
-		"/embed/pid-contrib/contributors.svg?accent=abc&limit=100",
+		"/embed/pid-contrib/contributors.svg?bg=00ff00&limit=25",
 	}
 	for _, u := range urls {
 		r := httptest.NewRequest(http.MethodGet, u, nil)
@@ -98,7 +99,47 @@ func TestContributorsEmbedCacheBoundedByUnitAndHideOwner(t *testing.T) {
 		t.Fatalf("count cache rows: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("expected exactly 1 contrib-data cache row regardless of colors/limit, got %d", count)
+		t.Fatalf("expected exactly 1 contrib-data cache row for limits sharing the same avatar tier, got %d", count)
+	}
+}
+
+func TestContributorsEmbedCacheSeparatesAvatarTiers(t *testing.T) {
+	db := newTestDB(t)
+	s := &server{db: db}
+
+	if err := insertProject(db, "pid-tier", "12345", []byte("ct"), []byte("n"), time.Now().Unix(), "hash-tier"); err != nil {
+		t.Fatalf("insertProject: %v", err)
+	}
+
+	contributors := []Contributor{{Username: "amara", FullName: "Amara Okafor", AvatarURL: "", Amount: 100}}
+	b, err := json.Marshal(contributors)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	setCache(db, "contrib-data:pid-tier:unit=words:hideOwner=false:avatars=30", string(b), cacheTTL)
+	setCache(db, "contrib-data:pid-tier:unit=words:hideOwner=false:avatars=100", string(b), cacheTTL)
+
+	urls := []string{
+		"/embed/pid-tier/contributors.svg?limit=5",   // 30-avatar tier
+		"/embed/pid-tier/contributors.svg?limit=50",  // 100-avatar tier
+		"/embed/pid-tier/contributors.svg?limit=100", // 100-avatar tier
+	}
+	for _, u := range urls {
+		r := httptest.NewRequest(http.MethodGet, u, nil)
+		r.SetPathValue("publicID", "pid-tier")
+		w := httptest.NewRecorder()
+		s.handleContributorsEmbed(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %s: expected 200, got %d: %s", u, w.Code, w.Body.String())
+		}
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM cache WHERE key LIKE 'contrib-data:%'`).Scan(&count); err != nil {
+		t.Fatalf("count cache rows: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected exactly 2 contrib-data cache rows (one per avatar tier actually used), got %d", count)
 	}
 }
 
@@ -118,7 +159,7 @@ func TestEmbedDataSharesDatasetCacheWithSVGRoutes(t *testing.T) {
 
 	contributors := []Contributor{{Username: "amara", Amount: 100}}
 	cb, _ := json.Marshal(contributors)
-	setCache(db, "contrib-data:pid-json:unit=words:hideOwner=false", string(cb), cacheTTL)
+	setCache(db, "contrib-data:pid-json:unit=words:hideOwner=false:avatars=100", string(cb), cacheTTL)
 
 	r := httptest.NewRequest(http.MethodGet, "/embed/pid-json/data.json", nil)
 	r.SetPathValue("publicID", "pid-json")

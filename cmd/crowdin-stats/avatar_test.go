@@ -9,6 +9,24 @@ import (
 	"testing"
 )
 
+func TestAvatarLimitTier(t *testing.T) {
+	cases := []struct {
+		limit int
+		want  int
+	}{
+		{1, 30},
+		{30, 30},
+		{31, maxAvatarEmbeds},
+		{100, maxAvatarEmbeds},
+		{500, maxAvatarEmbeds},
+	}
+	for _, c := range cases {
+		if got := avatarLimitTier(c.limit); got != c.want {
+			t.Errorf("avatarLimitTier(%d) = %d, want %d", c.limit, got, c.want)
+		}
+	}
+}
+
 func TestFetchAvatarDataURI(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

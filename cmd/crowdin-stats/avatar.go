@@ -37,6 +37,25 @@ const (
 // on top of whatever the data fetch itself needs.
 const avatarFetchWorstCase = ((maxAvatarEmbeds + avatarFetchParallel - 1) / avatarFetchParallel) * avatarFetchTimeout
 
+// avatarLimitTiers buckets how many avatars a contributor-data fetch embeds,
+// so the common case (the embed route's own default limit) doesn't pay for
+// fetching all maxAvatarEmbeds avatars when a request only needs a
+// fraction of them. Requests with the same tier share one cached dataset;
+// crossing a tier boundary costs a distinct fetch/cache row. Must stay
+// sorted ascending and end in maxAvatarEmbeds.
+var avatarLimitTiers = []int{30, maxAvatarEmbeds}
+
+// avatarLimitTier rounds limit up to the smallest tier in avatarLimitTiers
+// that can satisfy it.
+func avatarLimitTier(limit int) int {
+	for _, tier := range avatarLimitTiers {
+		if limit <= tier {
+			return tier
+		}
+	}
+	return maxAvatarEmbeds
+}
+
 // embedAvatarsAsDataURIs fetches each contributor's avatar server-side and
 // replaces AvatarURL with a data: URI, or clears it on any failure so
 // renderContributorsSVG falls back to its initials circle. Only the

@@ -508,7 +508,7 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
 
-	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner)
+	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner, avatarLimitTier(limit))
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
@@ -622,7 +622,10 @@ func (s *server) handleEmbedData(w http.ResponseWriter, r *http.Request) {
 		s.handleEmbedDataError(w, err)
 		return
 	}
-	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner)
+	// Always the full tier: the builder preview lets the user slide the
+	// limit up to maxAvatarEmbeds client-side, so it needs the whole
+	// dataset up front rather than refetching per limit tier.
+	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner, maxAvatarEmbeds)
 	if err != nil {
 		s.handleEmbedDataError(w, err)
 		return
@@ -753,17 +756,18 @@ func (s *server) getLanguageData(ctx context.Context, publicID string, p project
 	return langs, nil
 }
 
-// fetchContributorData always fetches avatars up to maxAvatarEmbeds
-// regardless of the caller's requested `limit`, so any limit up to that cap
-// can be served by truncating this same cached dataset in
-// renderContributorsSVG instead of triggering a distinct fetch/cache row.
-func (s *server) fetchContributorData(p project, unit ReportUnit, hideOwner bool) fetchFunc {
+// fetchContributorData fetches avatars up to avatarLimit (an
+// avatarLimitTier, not necessarily the caller's raw requested `limit`), so
+// any limit up to that tier can be served by truncating this same cached
+// dataset in renderContributorsSVG instead of triggering a distinct
+// fetch/cache row — see avatarLimitTier in avatar.go.
+func (s *server) fetchContributorData(p project, unit ReportUnit, hideOwner bool, avatarLimit int) fetchFunc {
 	return func(ctx context.Context) (string, error) {
 		token, err := decryptToken(s.masterKey, p.ciphertext, p.nonce)
 		if err != nil {
 			return "", err
 		}
-		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, maxAvatarEmbeds)
+		contributors, err := FetchTopMembers(ctx, token, p.crowdinProjectID, unit, hideOwner, avatarLimit)
 		if err != nil {
 			return "", err
 		}
@@ -775,9 +779,9 @@ func (s *server) fetchContributorData(p project, unit ReportUnit, hideOwner bool
 	}
 }
 
-func (s *server) getContributorData(ctx context.Context, publicID string, p project, unit ReportUnit, hideOwner bool) ([]Contributor, error) {
-	cacheKey := "contrib-data:" + publicID + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner)
-	body, err := getOrRefresh(ctx, s.db, cacheKey, publicID, s.fetchContributorData(p, unit, hideOwner), s.noCache)
+func (s *server) getContributorData(ctx context.Context, publicID string, p project, unit ReportUnit, hideOwner bool, avatarLimit int) ([]Contributor, error) {
+	cacheKey := "contrib-data:" + publicID + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner) + ":avatars=" + strconv.Itoa(avatarLimit)
+	body, err := getOrRefresh(ctx, s.db, cacheKey, publicID, s.fetchContributorData(p, unit, hideOwner, avatarLimit), s.noCache)
 	if err != nil {
 		return nil, err
 	}

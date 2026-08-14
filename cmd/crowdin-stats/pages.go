@@ -13,6 +13,7 @@ var templateFS embed.FS
 type pageData struct {
 	Title          string
 	ShowGetStarted bool
+	LivePreview    bool // true renders the embed-builder's <img> preview (setup), false its inline SVG preview (index)
 }
 
 type page struct {
@@ -25,7 +26,7 @@ var pages = map[string]page{
 		data: pageData{Title: "crowdin-stats — live translation images for your README", ShowGetStarted: true},
 	},
 	"setup": {
-		data: pageData{Title: "Generate your images — crowdin-stats", ShowGetStarted: false},
+		data: pageData{Title: "Generate your images — crowdin-stats", ShowGetStarted: false, LivePreview: true},
 	},
 	"privacy": {
 		data: pageData{Title: "Privacy Policy — crowdin-stats", ShowGetStarted: true},
@@ -37,7 +38,7 @@ var pages = map[string]page{
 
 func init() {
 	for name, p := range pages {
-		tmpl, err := template.ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
+		tmpl, err := template.ParseFS(templateFS, "templates/layout.html", "templates/embed-builder.html", "templates/"+name+".html")
 		if err != nil {
 			panic("parse template " + name + ": " + err.Error())
 		}

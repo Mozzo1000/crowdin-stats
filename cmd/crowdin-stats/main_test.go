@@ -36,3 +36,22 @@ func TestWriteSVGDefaultsToLongCacheTTL(t *testing.T) {
 		t.Fatalf("Cache-Control = %q, want %q", got, want)
 	}
 }
+
+func TestTrimToDigits(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain numeric ID", "12345", "12345"},
+		{"pasted project URL", "https://crowdin.com/project/12345", "12345"},
+		{"interspersed non-digits", "a1b2c3", "123"},
+		{"empty string", "", ""},
+		{"no digits at all", "abcdef", ""},
+	}
+	for _, c := range cases {
+		if got := trimToDigits(c.in); got != c.want {
+			t.Errorf("%s: trimToDigits(%q) = %q, want %q", c.name, c.in, got, c.want)
+		}
+	}
+}

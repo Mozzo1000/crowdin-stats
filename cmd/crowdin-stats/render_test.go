@@ -242,6 +242,34 @@ func TestParseEmbedColorsAuto(t *testing.T) {
 	}
 }
 
+func TestParseEmbedColorsValues(t *testing.T) {
+	q, err := url.ParseQuery("accent=ff0000&bg=badcolor")
+	if err != nil {
+		t.Fatalf("bad query: %v", err)
+	}
+	colors := parseEmbedColors(q)
+	if colors.accent != "#ff0000" {
+		t.Errorf("accent = %q, want %q (valid override honored)", colors.accent, "#ff0000")
+	}
+	if colors.bg != defaultEmbedColors.bg {
+		t.Errorf("bg = %q, want fallback %q (invalid hex ignored)", colors.bg, defaultEmbedColors.bg)
+	}
+	if colors.text != defaultEmbedColors.text {
+		t.Errorf("text = %q, want fallback %q (untouched field keeps base palette)", colors.text, defaultEmbedColors.text)
+	}
+}
+
+func TestParseEmbedColorsDarkTheme(t *testing.T) {
+	q, err := url.ParseQuery("theme=dark")
+	if err != nil {
+		t.Fatalf("bad query: %v", err)
+	}
+	colors := parseEmbedColors(q)
+	if colors.bg != darkEmbedColors.bg || colors.text != darkEmbedColors.text {
+		t.Errorf("theme=dark colors = %+v, want dark palette %+v", colors, darkEmbedColors)
+	}
+}
+
 func TestAutoThemeEmbedsFollowsViewerColorScheme(t *testing.T) {
 	langs := []LanguageProgress{{LanguageName: "French", Percent: 80}}
 	auto := embedColors{auto: true,

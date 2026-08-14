@@ -1,0 +1,60 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{.Title}}</title>
+  {{block "extrahead" .}}{{end}}
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="bg-bg text-text font-sans antialiased">
+
+  <header class="border-b border-border">
+    <nav class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <a href="/" class="flex items-center gap-2 font-semibold text-text shrink-0">
+        <span class="w-7 h-7 rounded-md bg-accent flex items-center justify-center shrink-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11M14 3l4 4-4 4"/><path d="M17 17H6M10 21l-4-4 4-4"/></svg>
+        </span>
+        crowdin-stats
+      </a>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="https://github.com/mozzo1000/crowdin-stats" class="nav-link hidden sm:inline-flex" target="_blank" rel="noopener">GitHub</a>
+        <button id="theme-toggle" type="button" aria-label="Toggle dark mode" class="w-9 h-9 grid place-items-center rounded-lg border border-border text-text-muted hover:text-text hover:bg-bg-subtle transition-colors">
+          <svg class="block dark:hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="hidden dark:block" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+        </button>
+        {{if .ShowGetStarted}}<a href="/setup" class="btn-primary text-sm px-4 py-2">Get started</a>{{end}}
+      </div>
+    </nav>
+  </header>
+
+  {{block "main" .}}{{end}}
+
+  <footer class="py-12 border-t border-border text-sm text-text-muted flex flex-wrap gap-x-6 gap-y-2 max-w-5xl mx-auto px-4 sm:px-6">
+    <a class="hover:text-text" href="https://github.com/mozzo1000/crowdin-stats">GitHub</a>
+    <a class="hover:text-text" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a>
+    <a class="hover:text-text" href="/terms">Terms of Service</a>
+    <a class="hover:text-text" href="/privacy">Privacy Policy</a>
+    <a class="hover:text-text" href="mailto:revoke@crowdin-stats.rewake.org">Revoke access</a>
+  </footer>
+
+  <script>
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      var isDark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
+    });
+  </script>
+  {{block "extrascript" .}}{{end}}
+</body>
+</html>
+{{end}}

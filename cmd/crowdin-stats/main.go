@@ -63,10 +63,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", serveStaticFile("static/index.html"))
-	mux.HandleFunc("GET /setup", serveStaticFile("static/setup.html"))
-	mux.HandleFunc("GET /terms", serveStaticFile("static/terms.html"))
-	mux.HandleFunc("GET /privacy", serveStaticFile("static/privacy.html"))
+	mux.HandleFunc("GET /{$}", servePage("index"))
+	mux.HandleFunc("GET /setup", servePage("setup"))
+	mux.HandleFunc("GET /terms", servePage("terms"))
+	mux.HandleFunc("GET /privacy", servePage("privacy"))
 	mux.HandleFunc("POST /setup", s.handleSetup)
 	mux.HandleFunc("POST /setup/projects", s.handleListProjects)
 	mux.HandleFunc("GET /embed/{publicID}/table.svg", s.handleTableEmbed)
@@ -80,12 +80,6 @@ func main() {
 	if err := http.ListenAndServe(addr, requestLogger(mux)); err != nil {
 		slog.Error("server exited", "error", err)
 		os.Exit(1)
-	}
-}
-
-func serveStaticFile(path string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, path)
 	}
 }
 

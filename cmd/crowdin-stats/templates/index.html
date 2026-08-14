@@ -26,13 +26,27 @@
       <div class="mt-12 panel p-4 sm:p-6 shadow-sm">
         <p class="text-text-muted text-xs font-medium mb-4">What appears in your README</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <img src="/static/demo-table.svg" alt="Example translation progress image" class="max-w-full mx-auto" />
-          <img src="/static/demo-contributors.svg" alt="Example contributors image" class="max-w-full mx-auto" />
-          <img src="/static/demo-overall.svg" alt="Example overall progress image" class="max-w-full mx-auto" />
-          <img src="/static/demo-overall-circle.svg" alt="Example circular overall progress image" class="max-w-full mx-auto" />
+          <img data-demo-light="/static/demo-table.svg" data-demo-dark="/static/demo-table-dark.svg" alt="Example translation progress image" class="max-w-full mx-auto" />
+          <img data-demo-light="/static/demo-contributors.svg" data-demo-dark="/static/demo-contributors-dark.svg" alt="Example contributors image" class="max-w-full mx-auto" />
+          <img data-demo-light="/static/demo-overall.svg" data-demo-dark="/static/demo-overall-dark.svg" alt="Example overall progress image" class="max-w-full mx-auto" />
+          <img data-demo-light="/static/demo-overall-circle.svg" data-demo-dark="/static/demo-overall-circle-dark.svg" alt="Example circular overall progress image" class="max-w-full mx-auto" />
         </div>
       </div>
     </section>
+
+    <script>
+      (function () {
+        var demoImgs = document.querySelectorAll('[data-demo-light]');
+        function syncDemoTheme() {
+          var dark = document.documentElement.classList.contains('dark');
+          demoImgs.forEach(function (img) {
+            img.src = img.getAttribute(dark ? 'data-demo-dark' : 'data-demo-light');
+          });
+        }
+        syncDemoTheme();
+        new MutationObserver(syncDemoTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      })();
+    </script>
 
     <!-- How it works -->
     <section class="py-16 border-t border-border">

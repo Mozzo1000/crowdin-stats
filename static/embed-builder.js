@@ -347,6 +347,11 @@
     var mode = opts.mode === 'live' ? 'live' : 'demo';
     var baseEmbedURL = opts.baseEmbedURL || '/embed/{public_id}';
 
+    // Follow the site's own light/dark toggle until the user explicitly
+    // overrides the builder's theme/colors — after that their choice wins.
+    var siteIsDark = document.documentElement.classList.contains('dark');
+    var themeFollowsSite = true;
+
     var state = {
       type: 'table',
       limit: 30,
@@ -360,8 +365,8 @@
       overallProgress: 'translation',
       overallMetric: 'both',
       overallVariant: 'card',
-      theme: 'light',
-      colors: Object.assign({}, DEFAULT_COLORS),
+      theme: siteIsDark ? 'dark' : 'light',
+      colors: Object.assign({}, siteIsDark ? DARK_COLORS : DEFAULT_COLORS),
     };
 
     var typeButtons = root.querySelectorAll('[data-embed-type]');
@@ -553,6 +558,7 @@
     }
     themeButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
+        themeFollowsSite = false;
         state.theme = btn.getAttribute('data-builder-theme');
         state.colors = Object.assign({}, state.theme === 'dark' ? DARK_COLORS : DEFAULT_COLORS);
         colorInputs.forEach(function (input) {
@@ -566,10 +572,25 @@
       var key = input.getAttribute('data-builder-color');
       input.value = state.colors[key];
       input.addEventListener('input', function () {
+        themeFollowsSite = false;
         state.colors[key] = input.value;
         render();
       });
     });
+
+    // Keep the builder's default light/dark palette in sync with the site's
+    // own toggle (in <header>) as long as the user hasn't picked a theme or
+    // color here themselves.
+    new MutationObserver(function () {
+      if (!themeFollowsSite) return;
+      var dark = document.documentElement.classList.contains('dark');
+      state.theme = dark ? 'dark' : 'light';
+      state.colors = Object.assign({}, dark ? DARK_COLORS : DEFAULT_COLORS);
+      colorInputs.forEach(function (input) {
+        input.value = state.colors[input.getAttribute('data-builder-color')];
+      });
+      render();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     if (copyBtn) {
       if (mode === 'demo') copyBtn.textContent = 'Copy template';

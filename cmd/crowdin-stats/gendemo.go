@@ -24,8 +24,11 @@ func generateDemoSVGs() {
 	}
 
 	table := renderTableSVG(demoLanguages, defaultEmbedColors)
+	tableDark := renderTableSVG(demoLanguages, darkEmbedColors)
 	overallCard := renderOverallCardSVG(demoLanguages, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors)
+	overallCardDark := renderOverallCardSVG(demoLanguages, OverallUnitWords, MetricBoth, ProgressTranslation, darkEmbedColors)
 	overallCircle := renderOverallCircleSVG(demoLanguages, OverallUnitWords, ProgressTranslation, defaultEmbedColors)
+	overallCircleDark := renderOverallCircleSVG(demoLanguages, OverallUnitWords, ProgressTranslation, darkEmbedColors)
 
 	// Avatar URLs point at pravatar.cc's generated-face placeholder service —
 	// consistent-per-ID stock faces, not real people, safe to bake into a
@@ -52,27 +55,23 @@ func generateDemoSVGs() {
 		{Username: "ines", FullName: "Ines Costa", Amount: 700},
 	})
 	contributors := renderContributorsSVG(demoContributors, 10, defaultEmbedColors)
+	contributorsDark := renderContributorsSVG(demoContributors, 10, darkEmbedColors)
 
-	if err := os.WriteFile("static/demo-table.svg", []byte(table), 0o644); err != nil {
-		slog.Error("write demo-table.svg failed", "error", err)
-		os.Exit(1)
+	files := map[string]string{
+		"static/demo-table.svg":               table,
+		"static/demo-table-dark.svg":          tableDark,
+		"static/demo-contributors.svg":        contributors,
+		"static/demo-contributors-dark.svg":   contributorsDark,
+		"static/demo-overall.svg":             overallCard,
+		"static/demo-overall-dark.svg":        overallCardDark,
+		"static/demo-overall-circle.svg":      overallCircle,
+		"static/demo-overall-circle-dark.svg": overallCircleDark,
 	}
-	if err := os.WriteFile("static/demo-contributors.svg", []byte(contributors), 0o644); err != nil {
-		slog.Error("write demo-contributors.svg failed", "error", err)
-		os.Exit(1)
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			slog.Error("write demo SVG failed", "path", path, "error", err)
+			os.Exit(1)
+		}
 	}
-	if err := os.WriteFile("static/demo-overall.svg", []byte(overallCard), 0o644); err != nil {
-		slog.Error("write demo-overall.svg failed", "error", err)
-		os.Exit(1)
-	}
-	if err := os.WriteFile("static/demo-overall-circle.svg", []byte(overallCircle), 0o644); err != nil {
-		slog.Error("write demo-overall-circle.svg failed", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("wrote demo SVGs",
-		"table", "static/demo-table.svg",
-		"contributors", "static/demo-contributors.svg",
-		"overall", "static/demo-overall.svg",
-		"overall_circle", "static/demo-overall-circle.svg",
-	)
+	slog.Info("wrote demo SVGs", "count", len(files))
 }

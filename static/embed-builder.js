@@ -360,11 +360,12 @@
     var overallVariantSelect = root.querySelector('[data-builder-overall-variant]');
     var themeButtons = root.querySelectorAll('[data-builder-theme]');
     var colorInputs = root.querySelectorAll('[data-builder-color]');
-    var previewEl = root.querySelector('[data-builder-preview]');
     var previewImg = root.querySelector('[data-builder-preview-img]');
+    var previewEl = root.querySelector('[data-builder-preview]');
     var urlEl = root.querySelector('[data-builder-url]');
     var copyBtn = root.querySelector('[data-builder-copy]');
     var debounceTimer = null;
+    var previewBlobURL = null;
 
     function render() {
       typeButtons.forEach(function (btn) {
@@ -407,7 +408,7 @@
         }
       }
 
-      if (mode === 'demo' && previewEl) {
+      if (mode === 'demo' && (previewImg || previewEl)) {
         var svg;
         if (state.type === 'table') {
           var pinned = parseLanguagePins(state.tableLanguages);
@@ -420,7 +421,31 @@
         } else {
           svg = renderContributorsSVG(DEMO_CONTRIBUTORS, state.limit, state.colors);
         }
-        previewEl.innerHTML = svg;
+        if (state.type === 'contributors') {
+          // Contributor avatars are referenced by external <image href> —
+          // browsers sandbox SVGs loaded via <img> (data:, blob:, or a
+          // plain URL alike) and drop external resource references inside
+          // them, so an <img>-rendered preview would show empty circles.
+          // Render inline instead; the avatar grid has almost no text, so
+          // the host page's font stack doesn't create a visible drift.
+          if (previewImg) previewImg.classList.add('hidden');
+          if (previewEl) {
+            previewEl.classList.remove('hidden');
+            previewEl.innerHTML = svg;
+          }
+        } else if (previewImg) {
+          // Rendered through an <img> (like the live preview) rather than
+          // innerHTML, so table/overall previews get the same isolated
+          // rendering context as the real embed instead of inheriting the
+          // host page's font stack/CSS.
+          previewImg.classList.remove('hidden');
+          if (previewEl) previewEl.classList.add('hidden');
+          var blob = new Blob([svg], { type: 'image/svg+xml' });
+          var url = URL.createObjectURL(blob);
+          if (previewBlobURL) URL.revokeObjectURL(previewBlobURL);
+          previewBlobURL = url;
+          previewImg.src = url;
+        }
       } else if (mode === 'live' && previewImg) {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(function () {

@@ -114,9 +114,8 @@
     </div>
 
     <div class="mb-4 overflow-x-auto">
-      {{if .LivePreview}}
-        <img data-builder-preview-img class="max-w-full" alt="Live image preview with your chosen settings" />
-      {{else}}
+      <img data-builder-preview-img class="max-w-full" alt="{{if .LivePreview}}Live image preview with your chosen settings{{else}}Preview of your chosen settings{{end}}" />
+      {{if not .LivePreview}}
         <div data-builder-preview></div>
       {{end}}
     </div>

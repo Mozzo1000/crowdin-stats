@@ -246,6 +246,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -301,6 +302,7 @@ func (s *server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(listProjectsResponse{Projects: projects})
 }
 
@@ -602,6 +604,7 @@ func (s *server) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	status := "revoked"
 	if revoked {
 		status = "already_revoked"

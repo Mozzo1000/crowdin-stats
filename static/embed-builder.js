@@ -14,8 +14,28 @@
 
   // Mirrors render.go's defaultEmbedColors / darkEmbedColors — the site's
   // own light- and dark-mode CSS tokens (input.css :root / :root.dark).
-  var DEFAULT_COLORS = { bg: '#ffffff', text: '#1f2a33', muted: '#64748b', accent: '#2f6fed', border: '#e2e8f0' };
-  var DARK_COLORS = { bg: '#12161d', text: '#edeff3', muted: '#97a2b4', accent: '#5b8dff', border: '#2b3340' };
+  var DEFAULT_COLORS = { bg: '#ffffff', text: '#1f2a33', muted: '#64748b', accent: '#2f6fed', border: '#8a90a0' };
+  var DARK_COLORS = { bg: '#12161d', text: '#edeff3', muted: '#97a2b4', accent: '#5b8dff', border: '#59657e' };
+
+  // Ported from render.go's mixHex/hexChannels — blends two hex colors,
+  // weighting b by t (0..1). Used to derive the fallback-avatar fill from
+  // bg/text rather than reusing colors.border, which is now tuned for
+  // stroke contrast and reads as too solid/prominent as a fill.
+  function hexChannels(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+  }
+
+  function mixHex(a, b, t) {
+    var ac = hexChannels(a), bc = hexChannels(b);
+    var mix = function (x, y) { return Math.round(x * (1 - t) + y * t); };
+    return '#' + [mix(ac[0], bc[0]), mix(ac[1], bc[1]), mix(ac[2], bc[2])].map(function (v) {
+      return v.toString(16).padStart(2, '0');
+    }).join('');
+  }
 
   var DEMO_LANGUAGES = [
     { id: 'fr', name: 'French', percent: 96, approvalPercent: 80, wordsTotal: 850, wordsTranslated: 816, wordsApproved: 680, phrasesTotal: 620, phrasesTranslated: 595, phrasesApproved: 496 },
@@ -166,6 +186,8 @@
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
     out += '<rect x="0.5" y="0.5" width="' + (width - 1) + '" height="' + (height - 1) + '" rx="8" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
 
+    var fallbackFill = mixHex(colors.bg, colors.text, 0.12);
+
     sorted.forEach(function (c, i) {
       var col = i % GRID.cols;
       var row = Math.floor(i / GRID.cols);
@@ -181,9 +203,9 @@
         out += '<image href="' + esc(c.avatar) + '" x="' + (GRID.paddingX + col * cell) + '" y="' + (GRID.paddingY + row * cell) +
           '" width="' + GRID.avatarSize + '" height="' + GRID.avatarSize + '" clip-path="url(#' + clipID + ')" preserveAspectRatio="xMidYMid slice"/>';
       } else {
-        out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="' + colors.border + '"/>';
+        out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="' + fallbackFill + '"/>';
         var initial = title ? title.charAt(0).toUpperCase() : '?';
-        out += '<text x="' + cx + '" y="' + cy + '" fill="' + colors.muted + '" font-size="16" text-anchor="middle" dominant-baseline="central">' + esc(initial) + '</text>';
+        out += '<text x="' + cx + '" y="' + cy + '" fill="' + colors.text + '" font-size="16" text-anchor="middle" dominant-baseline="central">' + esc(initial) + '</text>';
       }
       out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="none" stroke="' + colors.border + '" stroke-width="1"/>';
       out += '</a>';
@@ -268,7 +290,7 @@
 
     var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + CIRCLE.size + '" height="' + CIRCLE.size +
       '" viewBox="0 0 ' + CIRCLE.size + ' ' + CIRCLE.size + '" font-family="\'Segoe UI\', Helvetica, Arial, sans-serif">';
-    out += '<rect x="0.5" y="0.5" width="' + (CIRCLE.size - 1) + '" height="' + (CIRCLE.size - 1) + '" rx="10" fill="' + colors.bg + '" stroke="' + colors.border + '"/>';
+    out += '<rect x="0" y="0" width="' + CIRCLE.size + '" height="' + CIRCLE.size + '" rx="10" fill="' + colors.bg + '"/>';
     out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.border + '" stroke-width="10"/>';
     out += '<circle cx="' + center + '" cy="' + center + '" r="' + CIRCLE.radius + '" fill="none" stroke="' + colors.accent +
       '" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + filled.toFixed(2) + ' ' + circumference.toFixed(2) +

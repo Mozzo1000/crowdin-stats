@@ -16,8 +16,8 @@ import (
 // consistent vocabulary rather than two embed-specific ones.
 type embedColors struct {
 	bg     string // card background
-	text   string // primary text (language labels)
-	muted  string // secondary text (percentages, initials, empty-state message)
+	text   string // primary text (language labels, fallback-avatar initials)
+	muted  string // secondary text (percentages, empty-state message)
 	accent string // progress bar fill
 	border string // bar track / avatar ring / fallback circle background
 }
@@ -30,7 +30,7 @@ var defaultEmbedColors = embedColors{
 	text:   "#1f2a33",
 	muted:  "#64748b",
 	accent: "#2f6fed",
-	border: "#e2e8f0",
+	border: "#8a90a0",
 }
 
 // darkEmbedColors mirrors the site's :root.dark tokens. Selected via the
@@ -41,7 +41,7 @@ var darkEmbedColors = embedColors{
 	text:   "#edeff3",
 	muted:  "#97a2b4",
 	accent: "#5b8dff",
-	border: "#2b3340",
+	border: "#59657e",
 }
 
 var hexColorRe = regexp.MustCompile(`^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$`)
@@ -56,6 +56,32 @@ func sanitizeHexColor(raw, fallback string) string {
 		return "#" + raw
 	}
 	return fallback
+}
+
+// mixHex blends two hex colors, weighting b by t (0..1), and returns a
+// 6-digit hex color. Used to derive the fallback-avatar fill from bg/text
+// rather than reusing the (now higher-contrast, more prominent) border
+// color, so the fallback circles keep reading as a soft tint instead of a
+// solid ring color — see the fallback-avatar branch in
+// renderContributorsSVG.
+func mixHex(a, b string, t float64) string {
+	ar, ag, ab := hexChannels(a)
+	br, bg, bb := hexChannels(b)
+	mix := func(x, y int) int { return int(math.Round(float64(x)*(1-t) + float64(y)*t)) }
+	return fmt.Sprintf("#%02x%02x%02x", mix(ar, br), mix(ag, bg), mix(ab, bb))
+}
+
+// hexChannels parses a 3- or 6-digit hex color (with or without leading '#')
+// into its 0-255 RGB channels.
+func hexChannels(hex string) (r, g, b int) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	rv, _ := strconv.ParseInt(hex[0:2], 16, 0)
+	gv, _ := strconv.ParseInt(hex[2:4], 16, 0)
+	bv, _ := strconv.ParseInt(hex[4:6], 16, 0)
+	return int(rv), int(gv), int(bv)
 }
 
 // cacheKeyFragment renders the colors into a stable string so different
@@ -255,6 +281,11 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 	width := gridPaddingX*2 + cell*cols - avatarGap
 	height := gridPaddingY*2 + cell*rows - avatarGap
 
+	// A soft tint of bg/text rather than colors.border: border is now tuned
+	// for stroke contrast against bg, which makes it too prominent as a
+	// solid fill behind the fallback-avatar initials.
+	fallbackFill := mixHex(colors.bg, colors.text, 0.12)
+
 	var b strings.Builder
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`,
 		width, height, width, height)
@@ -280,13 +311,13 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 			fmt.Fprintf(&b, `<image href="%s" x="%d" y="%d" width="%d" height="%d" clip-path="url(#%s)" preserveAspectRatio="xMidYMid slice"/>`,
 				html.EscapeString(c.AvatarURL), gridPaddingX+col*cell, gridPaddingY+row*cell, avatarSize, avatarSize, clipID)
 		} else {
-			fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="%s"/>`, cx, cy, avatarSize/2, colors.border)
+			fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="%s"/>`, cx, cy, avatarSize/2, fallbackFill)
 			initial := "?"
 			if title != "" {
 				initial = strings.ToUpper(string([]rune(title)[0]))
 			}
 			fmt.Fprintf(&b, `<text x="%d" y="%d" fill="%s" font-size="16" text-anchor="middle" dominant-baseline="central">%s</text>`,
-				cx, cy, colors.muted, html.EscapeString(initial))
+				cx, cy, colors.text, html.EscapeString(initial))
 		}
 		fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="1"/>`,
 			cx, cy, avatarSize/2, colors.border)
@@ -447,7 +478,11 @@ func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, prog
 	var b strings.Builder
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
 		overallCircleSize, overallCircleSize, overallCircleSize, overallCircleSize)
-	fmt.Fprintf(&b, `<rect x="0.5" y="0.5" width="%d" height="%d" rx="10" fill="%s" stroke="%s"/>`, overallCircleSize-1, overallCircleSize-1, colors.bg, colors.border)
+	// Unlike the table/card renderers, no outer stroke: the accessible
+	// border color reads as a heavy square frame around what's meant to be
+	// a plain circular badge, and the progress ring itself already carries
+	// the border color as its track.
+	fmt.Fprintf(&b, `<rect x="0" y="0" width="%d" height="%d" rx="10" fill="%s"/>`, overallCircleSize, overallCircleSize, colors.bg)
 	fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="10"/>`,
 		center, center, overallCircleRadius, colors.border)
 	fmt.Fprintf(&b, `<circle cx="%d" cy="%d" r="%d" fill="none" stroke="%s" stroke-width="10" stroke-linecap="round" stroke-dasharray="%.2f %.2f" transform="rotate(-90 %d %d)"/>`,

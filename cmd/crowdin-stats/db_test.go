@@ -209,26 +209,45 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 	db := newTestDB(t)
 	ctx := context.Background()
 
+	var mu sync.Mutex
 	calls := 0
+	fetched := make(chan struct{}, 1)
 	fetch := func(ctx context.Context) (string, error) {
+		mu.Lock()
 		calls++
+		mu.Unlock()
+		fetched <- struct{}{}
 		return "<svg>fresh</svg>", nil
+	}
+	awaitFetch := func() {
+		t.Helper()
+		select {
+		case <-fetched:
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for fetch to run")
+		}
+	}
+	callCount := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return calls
 	}
 
 	svg, err := getOrRefresh(ctx, db, "k1", "rk1", fetch, false)
 	if err != nil {
 		t.Fatalf("getOrRefresh cold: %v", err)
 	}
-	if svg != "<svg>fresh</svg>" || calls != 1 {
-		t.Fatalf("expected 1 fetch on cold cache, got calls=%d svg=%s", calls, svg)
+	awaitFetch()
+	if svg != "<svg>fresh</svg>" || callCount() != 1 {
+		t.Fatalf("expected 1 fetch on cold cache, got calls=%d svg=%s", callCount(), svg)
 	}
 
 	svg, err = getOrRefresh(ctx, db, "k1", "rk1", fetch, false)
 	if err != nil {
 		t.Fatalf("getOrRefresh warm: %v", err)
 	}
-	if svg != "<svg>fresh</svg>" || calls != 1 {
-		t.Fatalf("expected no extra fetch on fresh cache hit, got calls=%d", calls)
+	if svg != "<svg>fresh</svg>" || callCount() != 1 {
+		t.Fatalf("expected no extra fetch on fresh cache hit, got calls=%d", callCount())
 	}
 
 	// force staleness
@@ -243,10 +262,11 @@ func TestCacheStaleWhileRevalidate(t *testing.T) {
 	if svg != "<svg>fresh</svg>" {
 		t.Fatalf("expected stale value served immediately, got %s", svg)
 	}
-	// background refresh is async; give it a moment
-	time.Sleep(100 * time.Millisecond)
-	if calls != 2 {
-		t.Fatalf("expected background refresh to have run, calls=%d", calls)
+	// background refresh is async; wait deterministically for it to run
+	// instead of sleeping a fixed duration.
+	awaitFetch()
+	if callCount() != 2 {
+		t.Fatalf("expected background refresh to have run, calls=%d", callCount())
 	}
 }
 

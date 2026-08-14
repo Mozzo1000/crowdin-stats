@@ -139,15 +139,13 @@ func autoThemeStyle(withFallback bool) string {
 }
 
 const (
-	tableRowHeight   = 28
-	tableWidth       = 360
-	tableLabelWidth  = 110
-	tableBarWidth    = 160
-	tableBarGap      = 8
-	tablePercentGap  = 8
-	tablePercentArea = 50
-	tablePaddingX    = 12
-	tablePaddingTop  = 12
+	tableRowHeight  = 28
+	tableWidth      = 360
+	tableLabelWidth = 110
+	tableBarWidth   = 160
+	tableBarGap     = 8
+	tablePaddingX   = 12
+	tablePaddingTop = 12
 )
 
 // ProgressType selects which of the two percentages Crowdin tracks per
@@ -264,10 +262,10 @@ func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 		return sorted[i].LanguageName < sorted[j].LanguageName
 	})
 
-	height := tablePaddingTop*2 + tableRowHeight*len(sorted)
 	if len(sorted) == 0 {
 		return emptyStateSVG(tableWidth, 60, "no language data yet", colors)
 	}
+	height := tablePaddingTop*2 + tableRowHeight*len(sorted)
 
 	var b strings.Builder
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img">`,

@@ -156,6 +156,19 @@
       {{end}}
     </div>
 
+    {{if .LivePreview}}
+      <div class="flex gap-2 mb-2">
+        <button type="button" data-builder-format="markdown" class="flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-border transition-colors">Markdown</button>
+        <button type="button" data-builder-format="html" class="flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-border transition-colors">HTML</button>
+        <button type="button" data-builder-format="rst" class="flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-border transition-colors">reStructuredText</button>
+        <button type="button" data-builder-format="url" class="flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-border transition-colors">URL only</button>
+      </div>
+      <label data-builder-link-row class="hidden items-center gap-2 text-xs text-text-muted mb-2">
+        <input type="checkbox" data-builder-link-toggle class="rounded border-border accent-accent" />
+        Link image to the Crowdin project page
+      </label>
+    {{end}}
+
     <div class="flex items-center gap-2">
       <div data-builder-url class="flex-1 font-mono text-xs text-accent break-all bg-bg-subtle border border-border rounded-lg px-3 py-2"></div>
       <button type="button" data-builder-copy class="btn-secondary text-xs px-3 py-2 shrink-0">Copy URL</button>

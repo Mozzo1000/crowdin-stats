@@ -196,6 +196,7 @@ type setupResponse struct {
 	OverallURL      string `json:"overall_url"`
 	Markdown        string `json:"markdown"`
 	RevokeURL       string `json:"revoke_url"`
+	ProjectWebURL   string `json:"project_web_url"`
 }
 
 func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +260,8 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := ValidateProject(ctx, req.Token, req.CrowdinProjectID); err != nil {
+	projectWebURL, err := ValidateProject(ctx, req.Token, req.CrowdinProjectID)
+	if err != nil {
 		if !s.noRateLimit {
 			recordFailure(s.db, "setup-fail:"+ip, time.Hour)
 		}
@@ -303,6 +305,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		OverallURL:      overallURL,
 		Markdown:        "![Translation Progress](" + tableURL + ")\n![Overall](" + overallURL + ")\n![Contributors](" + contribURL + ")",
 		RevokeURL:       base + "/revoke/" + revokeToken,
+		ProjectWebURL:   projectWebURL,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

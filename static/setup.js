@@ -261,6 +261,7 @@ form.addEventListener('submit', async (e) => {
   CrowdinStatsEmbedBuilder.init(document.querySelector('.embed-builder'), {
     mode: 'live',
     baseEmbedURL: data.embed_base_url,
+    projectWebURL: data.project_web_url,
   });
 
   function showError(message) {

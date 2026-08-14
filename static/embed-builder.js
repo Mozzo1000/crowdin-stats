@@ -399,10 +399,44 @@
     return qs ? '?' + qs : '';
   }
 
+  // Alt text for the generated snippet, matching the wording /setup's own
+  // Markdown field uses (see setupResponse.Markdown in main.go) so the two
+  // don't drift.
+  function altTextFor(type) {
+    if (type === 'table') return 'Translation Progress';
+    if (type === 'overall') return 'Overall';
+    return 'Contributors';
+  }
+
+  // Builds a ready-to-paste snippet in the given format, matching the
+  // common link-wrapped form (image linking back to the Crowdin project)
+  // when a project URL is available and the user hasn't opted out.
+  function buildSnippet(format, fullURL, altText, linkURL) {
+    if (format === 'html') {
+      var img = '<img src="' + fullURL + '" alt="' + altText + '" />';
+      return linkURL ? '<a href="' + linkURL + '" target="_blank" rel="noopener">' + img + '</a>' : img;
+    }
+    if (format === 'rst') {
+      var lines = ['.. image:: ' + fullURL, '   :alt: ' + altText];
+      if (linkURL) lines.push('   :target: ' + linkURL);
+      return lines.join('\n');
+    }
+    // markdown
+    var md = '![' + altText + '](' + fullURL + ')';
+    return linkURL ? '[' + md + '](' + linkURL + ')' : md;
+  }
+
   function init(root, opts) {
     opts = opts || {};
     var mode = opts.mode === 'live' ? 'live' : 'demo';
     var baseEmbedURL = opts.baseEmbedURL || '/embed/{public_id}';
+    // Only set in live mode, and only when Crowdin returned one — used to
+    // build the link-wrapped snippet form, e.g.
+    // [![...](embed.svg)](https://crowdin.com/project/...). Snippet output
+    // (Markdown/HTML/reStructuredText) is live-mode-only: the demo builder
+    // on the landing page has no real project to link to or fetch data
+    // from, so a copyable snippet there would just be more placeholder text.
+    var projectWebURL = mode === 'live' ? (opts.projectWebURL || '') : '';
 
     // Follow the site's own light/dark toggle until the user explicitly
     // overrides the builder's theme/colors — after that their choice wins.
@@ -424,6 +458,9 @@
       overallVariant: 'card',
       theme: siteIsDark ? 'dark' : 'light',
       colors: Object.assign({}, siteIsDark ? DARK_COLORS : DEFAULT_COLORS),
+      // live mode only: 'url' | 'markdown' | 'html' | 'rst'
+      format: 'markdown',
+      linkToProject: true,
       // live mode only: raw {languages, contributors} fetched once from
       // /embed/{publicID}/data.json and re-rendered locally on every
       // color/limit/progress/etc. change — see ensureLiveData below.
@@ -456,6 +493,9 @@
     var previewEl = root.querySelector('[data-builder-preview]');
     var urlEl = root.querySelector('[data-builder-url]');
     var copyBtn = root.querySelector('[data-builder-copy]');
+    var formatButtons = root.querySelectorAll('[data-builder-format]');
+    var linkToggleRow = root.querySelector('[data-builder-link-row]');
+    var linkToggleInput = root.querySelector('[data-builder-link-toggle]');
     var previewBlobURL = null;
     var liveFetchInFlight = null;
     var liveFetchToken = 0;
@@ -558,6 +598,22 @@
       var qs = buildQueryString(state.type, state);
       var filename = state.type === 'table' ? 'table.svg' : state.type === 'overall' ? 'overall.svg' : 'contributors.svg';
       var fullURL = baseEmbedURL + '/' + filename + qs;
+      formatButtons.forEach(function (btn) {
+        var active = btn.getAttribute('data-builder-format') === state.format;
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        btn.classList.toggle('bg-accent', active);
+        btn.classList.toggle('text-accent-contrast', active);
+        btn.classList.toggle('text-text-muted', !active);
+      });
+      if (linkToggleRow) {
+        var hideLinkRow = !projectWebURL || state.format === 'url';
+        linkToggleRow.classList.toggle('hidden', hideLinkRow);
+        linkToggleRow.classList.toggle('flex', !hideLinkRow);
+      }
+      if (copyBtn && mode === 'live') {
+        copyBtn.textContent = state.format === 'url' ? 'Copy URL' : 'Copy snippet';
+      }
+
       if (urlEl) {
         if (mode === 'demo') {
           // baseEmbedURL still contains the literal "{public_id}" stand-in
@@ -566,8 +622,11 @@
             .split('{public_id}')
             .map(esc)
             .join('<span class="builder-placeholder">{public_id}</span>');
-        } else {
+        } else if (state.format === 'url') {
           urlEl.textContent = fullURL;
+        } else {
+          var linkURL = state.linkToProject ? projectWebURL : '';
+          urlEl.textContent = buildSnippet(state.format, fullURL, altTextFor(state.type), linkURL);
         }
       }
 
@@ -746,6 +805,20 @@
       syncColorInputs();
       render();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    formatButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.format = btn.getAttribute('data-builder-format');
+        render();
+      });
+    });
+    if (linkToggleInput) {
+      linkToggleInput.checked = state.linkToProject;
+      linkToggleInput.addEventListener('change', function () {
+        state.linkToProject = linkToggleInput.checked;
+        render();
+      });
+    }
 
     if (copyBtn) {
       if (mode === 'demo') copyBtn.textContent = 'Copy template';

@@ -101,18 +101,20 @@ func friendlyAPIError(err error) error {
 	return errors.New("could not reach Crowdin, please try again")
 }
 
-// ValidateProject confirms a token is valid and scoped to the given project.
-func ValidateProject(ctx context.Context, token, projectID string) error {
+// ValidateProject confirms a token is valid and scoped to the given project,
+// and returns the project's public Crowdin URL (crowdin.com/project/...) for
+// building link-wrapped embed snippets.
+func ValidateProject(ctx context.Context, token, projectID string) (string, error) {
 	client, id, err := crowdinRequestSetup(ctx, token, projectID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, _, err = client.Projects.Get(ctx, id)
+	project, _, err := client.Projects.Get(ctx, id)
 	if err != nil {
-		return friendlyAPIError(err)
+		return "", friendlyAPIError(err)
 	}
-	return nil
+	return project.WebURL, nil
 }
 
 // ProjectSummary is the minimal project shape shown in the onboarding

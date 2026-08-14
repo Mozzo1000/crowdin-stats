@@ -289,6 +289,8 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.warmEmbedCache(publicID, project{crowdinProjectID: req.CrowdinProjectID, ciphertext: ciphertext, nonce: nonce})
+
 	base := s.baseURL
 	tableURL := base + "/embed/" + publicID + "/table.svg"
 	contribURL := base + "/embed/" + publicID + "/contributors.svg?limit=30&unit=words"
@@ -777,6 +779,31 @@ func (s *server) fetchContributorData(p project, unit ReportUnit, hideOwner bool
 		}
 		return string(b), nil
 	}
+}
+
+// warmEmbedCache pre-populates the dataset caches getLanguageData and
+// getContributorData rely on, right after setup succeeds, so the user's
+// first real embed view doesn't trigger the cold fetch (report generation +
+// avatar inlining) that can take 60s+ and time out GitHub's image proxy
+// (issue #25). It targets the same default params handleSetup hands back in
+// TableURL/ContributorsURL/OverallURL. table.svg and overall.svg share the
+// language dataset, so warming it once covers both.
+//
+// It's detached from the request — setup must return immediately — with its
+// own generous timeout, since it's racing the same slow path as any other
+// background refresh (see backgroundRefreshTimeout, cache.go).
+func (s *server) warmEmbedCache(publicID string, p project) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), backgroundRefreshTimeout)
+		defer cancel()
+
+		if _, err := s.getLanguageData(ctx, publicID, p); err != nil {
+			slog.Warn("embed cache warm-up failed", "publicID", publicID, "dataset", "languages", "error", err)
+		}
+		if _, err := s.getContributorData(ctx, publicID, p, UnitWords, false, avatarLimitTier(30)); err != nil {
+			slog.Warn("embed cache warm-up failed", "publicID", publicID, "dataset", "contributors", "error", err)
+		}
+	}()
 }
 
 func (s *server) getContributorData(ctx context.Context, publicID string, p project, unit ReportUnit, hideOwner bool, avatarLimit int) ([]Contributor, error) {

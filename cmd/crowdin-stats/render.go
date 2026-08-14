@@ -222,8 +222,9 @@ func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img">`,
 		tableWidth, height, tableWidth, height)
+	b.WriteString(`<title>Translation progress by language</title>`)
 	fmt.Fprintf(&b, `<rect x="0.5" y="0.5" width="%d" height="%d" rx="8" fill="%s" stroke="%s"/>`, tableWidth-1, height-1, colors.bg, colors.border)
 
 	barX := tablePaddingX + tableLabelWidth + tableBarGap
@@ -287,8 +288,9 @@ func renderContributorsSVG(contributors []Contributor, limit int, colors embedCo
 	fallbackFill := mixHex(colors.bg, colors.text, 0.12)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`,
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img">`,
 		width, height, width, height)
+	b.WriteString(`<title>Top contributors</title>`)
 	fmt.Fprintf(&b, `<rect x="0.5" y="0.5" width="%d" height="%d" rx="8" fill="%s" stroke="%s"/>`, width-1, height-1, colors.bg, colors.border)
 
 	for i, c := range sorted {
@@ -423,14 +425,16 @@ func renderOverallCardSVG(languages []LanguageProgress, unit OverallUnit, metric
 		return emptyStateSVG(overallCardWidth, 60, "no translation data yet", colors)
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
-		overallCardWidth, overallCardHeight, overallCardWidth, overallCardHeight)
-	fmt.Fprintf(&b, `<rect x="0.5" y="0.5" width="%d" height="%d" rx="10" fill="%s" stroke="%s"/>`, overallCardWidth-1, overallCardHeight-1, colors.bg, colors.border)
-	label := "TRANSLATION PROGRESS"
+	label, title := "TRANSLATION PROGRESS", "Translation progress"
 	if progressType == ProgressApproval {
-		label = "APPROVAL PROGRESS"
+		label, title = "APPROVAL PROGRESS", "Approval progress"
 	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img">`,
+		overallCardWidth, overallCardHeight, overallCardWidth, overallCardHeight)
+	fmt.Fprintf(&b, `<title>%s: %d%%</title>`, title, prog.Percent)
+	fmt.Fprintf(&b, `<rect x="0.5" y="0.5" width="%d" height="%d" rx="10" fill="%s" stroke="%s"/>`, overallCardWidth-1, overallCardHeight-1, colors.bg, colors.border)
 	fmt.Fprintf(&b, `<text x="%d" y="30" fill="%s" font-size="12" font-weight="600" letter-spacing="0.06em">%s</text>`,
 		overallCardPadding, colors.muted, label)
 
@@ -475,9 +479,15 @@ func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, prog
 	filled := circumference * float64(prog.Percent) / 100
 	center := overallCircleSize / 2
 
+	title := "Translation progress"
+	if progressType == ProgressApproval {
+		title = "Approval progress"
+	}
+
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`,
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img">`,
 		overallCircleSize, overallCircleSize, overallCircleSize, overallCircleSize)
+	fmt.Fprintf(&b, `<title>%s: %d%%</title>`, title, prog.Percent)
 	// Unlike the table/card renderers, no outer stroke: the accessible
 	// border color reads as a heavy square frame around what's meant to be
 	// a plain circular badge, and the progress ring itself already carries
@@ -495,11 +505,12 @@ func renderOverallCircleSVG(languages []LanguageProgress, unit OverallUnit, prog
 
 func emptyStateSVG(width, height int, message string, colors embedColors) string {
 	return fmt.Sprintf(
-		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif">`+
+		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img">`+
+			`<title>%s</title>`+
 			`<rect x="0.5" y="0.5" width="%d" height="%d" rx="8" fill="%s" stroke="%s"/>`+
 			`<text x="%d" y="%d" fill="%s" font-size="12" text-anchor="middle" dominant-baseline="middle">%s</text>`+
 			`</svg>`,
-		width, height, width, height, width-1, height-1, colors.bg, colors.border, width/2, height/2, colors.muted, html.EscapeString(message))
+		width, height, width, height, html.EscapeString(message), width-1, height-1, colors.bg, colors.border, width/2, height/2, colors.muted, html.EscapeString(message))
 }
 
 func clampPercent(p int) int {

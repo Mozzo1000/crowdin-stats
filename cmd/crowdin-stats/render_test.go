@@ -99,8 +99,9 @@ func TestRenderOverallCardSVGMetrics(t *testing.T) {
 	if !strings.Contains(fractionOnly, "1 / 4 words") {
 		t.Fatalf("metric=fraction should show the fraction: %s", fractionOnly)
 	}
-	if strings.Contains(fractionOnly, "25%") {
-		t.Fatalf("metric=fraction should not show the percentage: %s", fractionOnly)
+	visible := fractionOnly[strings.Index(fractionOnly, "</title>"):]
+	if strings.Contains(visible, "25%") {
+		t.Fatalf("metric=fraction should not show the percentage outside the accessible title: %s", fractionOnly)
 	}
 }
 
@@ -208,6 +209,30 @@ func TestParseLanguagePins(t *testing.T) {
 	}
 	if parseLanguagePins("") != nil {
 		t.Fatalf("expected nil for empty input")
+	}
+}
+
+func TestSVGRenderersHaveAccessibleName(t *testing.T) {
+	langs := []LanguageProgress{{LanguageName: "French", Percent: 80}}
+	contributors := []Contributor{{Username: "alice", FullName: "Alice A", Amount: 100}}
+
+	svgs := map[string]string{
+		"table":                renderTableSVG(langs, defaultEmbedColors),
+		"table empty":          renderTableSVG(nil, defaultEmbedColors),
+		"contributors":         renderContributorsSVG(contributors, 30, defaultEmbedColors),
+		"contributors empty":   renderContributorsSVG(nil, 30, defaultEmbedColors),
+		"overall card":         renderOverallCardSVG(langs, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors),
+		"overall card empty":   renderOverallCardSVG(nil, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors),
+		"overall circle":       renderOverallCircleSVG(langs, OverallUnitWords, ProgressTranslation, defaultEmbedColors),
+		"overall circle empty": renderOverallCircleSVG(nil, OverallUnitWords, ProgressTranslation, defaultEmbedColors),
+	}
+	for name, svg := range svgs {
+		if !strings.Contains(svg, `role="img"`) {
+			t.Errorf("%s: expected role=\"img\" on root svg, got: %s", name, svg)
+		}
+		if !strings.Contains(svg, "<title>") {
+			t.Errorf("%s: expected a <title> element, got: %s", name, svg)
+		}
 	}
 }
 

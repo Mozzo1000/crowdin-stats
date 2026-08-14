@@ -1,14 +1,29 @@
 # crowdin-stats
 
-Self-hosted service generating live, embeddable SVG images (translation
-progress table + contributor grid) for Crowdin projects, for use in GitHub
-READMEs. See `PLAN.md` for the full design and `SECURITY.md` for the
-encryption/token-handling guarantees.
+Generates live, embeddable SVG images (translation progress table +
+contributor grid) for Crowdin projects, for use in GitHub READMEs.
+
+A hosted instance is available at https://crowdin-stats.rewake.org — sign in
+with a Crowdin project token to get your embed URLs in under a minute. You
+can also run your own instance; see [Deployment](#deployment) below.
 
 <p>
-  <img src="static/demo-table.svg" alt="Translation progress table example" height="192">
-  <img src="static/demo-overall.svg" alt="Overall progress card example" height="192">
-  <img src="static/demo-contributors.svg" alt="Contributor grid example" height="192">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/demo-table-dark.svg">
+    <img src="static/demo-table.svg" alt="Translation progress table example" height="192">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/demo-overall-dark.svg">
+    <img src="static/demo-overall.svg" alt="Overall progress card example" height="192">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/demo-overall-circle-dark.svg">
+    <img src="static/demo-overall-circle.svg" alt="Overall progress circle example" height="192">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/demo-contributors-dark.svg">
+    <img src="static/demo-contributors.svg" alt="Contributor grid example" height="192">
+  </picture>
 </p>
 
 ## Development
@@ -49,9 +64,10 @@ locally too (e.g. via `docker compose`).
 See `docker-compose.yml`, `Dockerfile`, and `Caddyfile`. Copy `.env.example`
 to `.env`, fill in `MASTER_KEY` and `HOST`, then `docker compose up -d --build`.
 
-The app container runs as a non-root user (uid/gid `10001`), so the bind-mounted
-`./data` directory must be writable by that uid — run
-`mkdir -p data && sudo chown 10001:10001 data` before the first `docker compose up`.
+The app container runs as a non-root user (uid/gid `10001`) with all Linux
+capabilities dropped, so the bind-mounted `./data` directory must be writable
+by that uid — run `mkdir -p data && sudo chown 10001:10001 data` before the
+first `docker compose up`.
 
 ## License
 

@@ -9,7 +9,7 @@
         <p>When you register a project via <code class="font-mono text-accent">/setup</code>, we store:</p>
         <ul class="list-disc list-inside mt-2 space-y-1.5">
           <li>Your Crowdin Project ID, in plaintext.</li>
-          <li>Your Crowdin Personal Access Token, encrypted (see <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the technical detail).</li>
+          <li>Your Crowdin Personal Access Token, encrypted at rest.</li>
           <li>A randomly generated <code class="font-mono text-accent">public_id</code>, used in your embed URLs.</li>
           <li>A timestamp of when the project was registered.</li>
         </ul>
@@ -24,7 +24,7 @@
       <section>
         <h2 class="text-text font-medium mb-2">Who can see your data</h2>
         <p>No third-party subprocessors are involved in storing or processing your token — no cloud KMS, no managed database, no external cache provider. The entire data path is the operator's own EU-based virtual machine, plus Crowdin's own API, which you have already chosen to trust by using Crowdin.</p>
-        <p class="mt-2">The encryption key used to protect your token exists only in the server's runtime environment. It is never written to the database, included in backups, or logged — see <a class="text-accent hover:underline" href="https://github.com/mozzo1000/crowdin-stats/blob/main/SECURITY.md">SECURITY.md</a> for the full guarantee and its honest limits.</p>
+        <p class="mt-2">The encryption key used to protect your token exists only in the server's runtime environment. It is never written to the database, included in backups, or logged.</p>
       </section>
 
       <section>

@@ -46,9 +46,25 @@ type Contributor struct {
 	Amount    int64
 }
 
-// crowdinClientFor builds an official Crowdin API client for a single request.
-func crowdinClientFor(token string) (*crowdin.Client, error) {
-	return crowdin.NewClient(token)
+// crowdinRequestSetup parses projectID, builds an official Crowdin API
+// client for a single request, and blocks until outboundLimiter admits the
+// call — the boilerplate every handler needs before it can talk to Crowdin.
+func crowdinRequestSetup(ctx context.Context, token, projectID string) (*crowdin.Client, int, error) {
+	id, err := strconv.Atoi(projectID)
+	if err != nil {
+		return nil, 0, errors.New("project ID must be numeric")
+	}
+
+	client, err := crowdin.NewClient(token)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if err := outboundLimiter.Wait(ctx); err != nil {
+		return nil, 0, err
+	}
+
+	return client, id, nil
 }
 
 // friendlyAPIError turns a Crowdin client error into a short, specific
@@ -74,19 +90,11 @@ func friendlyAPIError(err error) string {
 
 // ValidateProject confirms a token is valid and scoped to the given project.
 func ValidateProject(ctx context.Context, token, projectID string) error {
-	id, err := strconv.Atoi(projectID)
-	if err != nil {
-		return errors.New("project ID must be numeric")
-	}
-
-	client, err := crowdinClientFor(token)
+	client, id, err := crowdinRequestSetup(ctx, token, projectID)
 	if err != nil {
 		return err
 	}
 
-	if err := outboundLimiter.Wait(ctx); err != nil {
-		return err
-	}
 	_, _, err = client.Projects.Get(ctx, id)
 	if err != nil {
 		return errors.New(friendlyAPIError(err))
@@ -106,7 +114,7 @@ type ProjectSummary struct {
 // project(s) they were scoped to, so this list is naturally already
 // filtered to what the user is allowed to pick from.
 func ListProjects(ctx context.Context, token string) ([]ProjectSummary, error) {
-	client, err := crowdinClientFor(token)
+	client, err := crowdin.NewClient(token)
 	if err != nil {
 		return nil, err
 	}
@@ -133,19 +141,11 @@ func ListProjects(ctx context.Context, token string) ([]ProjectSummary, error) {
 // the owner shows up in the top-members report like any other translator,
 // but isn't a "contributor" in the sense the embed is meant to celebrate.
 func fetchProjectOwnerID(ctx context.Context, token, projectID string) (int64, error) {
-	id, err := strconv.Atoi(projectID)
-	if err != nil {
-		return 0, errors.New("project ID must be numeric")
-	}
-
-	client, err := crowdinClientFor(token)
+	client, id, err := crowdinRequestSetup(ctx, token, projectID)
 	if err != nil {
 		return 0, err
 	}
 
-	if err := outboundLimiter.Wait(ctx); err != nil {
-		return 0, err
-	}
 	project, _, err := client.Projects.Get(ctx, id)
 	if err != nil {
 		return 0, fmt.Errorf("fetch project owner: %s", friendlyAPIError(err))
@@ -155,19 +155,11 @@ func fetchProjectOwnerID(ctx context.Context, token, projectID string) (int64, e
 
 // FetchLanguageProgress retrieves per-language translation progress for a project.
 func FetchLanguageProgress(ctx context.Context, token, projectID string) ([]LanguageProgress, error) {
-	id, err := strconv.Atoi(projectID)
-	if err != nil {
-		return nil, errors.New("project ID must be numeric")
-	}
-
-	client, err := crowdinClientFor(token)
+	client, id, err := crowdinRequestSetup(ctx, token, projectID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := outboundLimiter.Wait(ctx); err != nil {
-		return nil, err
-	}
 	progress, _, err := client.TranslationStatus.GetProjectProgress(ctx, id, nil)
 	if err != nil {
 		return nil, fmt.Errorf("fetch translation progress: %s", friendlyAPIError(err))
@@ -262,16 +254,6 @@ func (u ReportUnit) toCrowdinUnit() model.ReportUnit {
 // "top-members" report and returns contributors ranked by the given unit.
 // When hideOwner is set, the project owner is excluded from the result.
 func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUnit, hideOwner bool) ([]Contributor, error) {
-	id, err := strconv.Atoi(projectID)
-	if err != nil {
-		return nil, errors.New("project ID must be numeric")
-	}
-
-	client, err := crowdinClientFor(token)
-	if err != nil {
-		return nil, err
-	}
-
 	// Kicked off in parallel with report generation/polling below, so
 	// hideOwner doesn't add its own round trip to the embed's latency.
 	var ownerID int64
@@ -285,9 +267,11 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		}()
 	}
 
-	if err := outboundLimiter.Wait(ctx); err != nil {
+	client, id, err := crowdinRequestSetup(ctx, token, projectID)
+	if err != nil {
 		return nil, err
 	}
+
 	status, _, err := client.Reports.Generate(ctx, id, &model.ReportGenerateRequest{
 		Name: model.ReportTopMembers,
 		Schema: &model.TopMembersSchema{

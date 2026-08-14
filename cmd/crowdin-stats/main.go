@@ -420,13 +420,14 @@ func parseProgressType(q url.Values) ProgressType {
 
 func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
+	q := r.URL.Query()
+	colors := parseEmbedColors(q)
 	p, err := getProject(s.db, publicID)
 	if err != nil {
-		http.NotFound(w, r)
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors), errorSVGMaxAge)
 		return
 	}
 
-	q := r.URL.Query()
 	progressType := parseProgressType(q)
 
 	limit := 0
@@ -452,8 +453,6 @@ func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 
 	pinned := parseLanguagePins(q.Get("languages"))
 
-	colors := parseEmbedColors(q)
-
 	cacheKey := "table:" + publicID +
 		":progress=" + string(progressType) +
 		":limit=" + strconv.Itoa(limit) +
@@ -470,9 +469,10 @@ func (s *server) handleTableEmbed(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
+	colors := parseEmbedColors(r.URL.Query())
 	p, err := getProject(s.db, publicID)
 	if err != nil {
-		http.NotFound(w, r)
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors), errorSVGMaxAge)
 		return
 	}
 
@@ -497,7 +497,6 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 	}
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
-	colors := parseEmbedColors(r.URL.Query())
 
 	cacheKey := "contrib:" + publicID + ":limit=" + strconv.Itoa(limit) + ":unit=" + string(unit) + ":hideOwner=" + strconv.FormatBool(hideOwner) + ":" + colors.cacheKeyFragment()
 	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderContributors(p, limit, unit, hideOwner, colors), s.noCache)
@@ -510,13 +509,13 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 
 func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 	publicID := r.PathValue("publicID")
+	q := r.URL.Query()
+	colors := parseEmbedColors(q)
 	p, err := getProject(s.db, publicID)
 	if err != nil {
-		http.NotFound(w, r)
+		writeSVGWithMaxAge(w, emptyStateSVG(320, 60, "project not found — re-run setup", colors), errorSVGMaxAge)
 		return
 	}
-
-	q := r.URL.Query()
 
 	unit := OverallUnit(q.Get("unit"))
 	switch unit {
@@ -547,8 +546,6 @@ func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
 		}
 		metricKey = string(metric)
 	}
-
-	colors := parseEmbedColors(q)
 
 	cacheKey := "overall:" + publicID + ":unit=" + string(unit) + ":progress=" + string(progressType) + ":metric=" + metricKey + ":variant=" + variant + ":" + colors.cacheKeyFragment()
 	svg, err := getOrRefresh(r.Context(), s.db, cacheKey, publicID, s.renderOverall(p, unit, metric, progressType, variant, colors), s.noCache)

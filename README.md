@@ -7,6 +7,13 @@ A hosted instance is available at https://crowdin-stats.rewake.org — sign in
 with a Crowdin project token to get your embed URLs in under a minute. You
 can also run your own instance; see [Deployment](#deployment) below.
 
+<a href="https://rewake.org">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Mozzo1000/rewake.org/main/assets/badge-dark.svg">
+    <img src="https://raw.githubusercontent.com/Mozzo1000/rewake.org/main/assets/badge.svg" alt="a re:wake project">
+  </picture>
+</a>
+
 <p>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="static/demo-table-dark.svg">

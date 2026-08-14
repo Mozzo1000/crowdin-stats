@@ -99,7 +99,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           requestLogger(mux),
+		Handler:           requestLogger(recoverMiddleware(mux)),
 		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -147,6 +147,21 @@ func requestLogger(next http.Handler) http.Handler {
 			"status", lw.status,
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
+	})
+}
+
+// recoverMiddleware catches panics in handlers (e.g. an unexpected/empty
+// Crowdin API response) so one bad request logs and 500s instead of taking
+// down the whole process.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("panic recovered", "path", r.URL.Path, "error", rec)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
 	})
 }
 

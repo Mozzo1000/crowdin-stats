@@ -295,6 +295,9 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	if err != nil {
 		return nil, fmt.Errorf("generate top-members report: %w", friendlyAPIError(err))
 	}
+	if status == nil {
+		return nil, errors.New("generate top-members report: empty response from Crowdin")
+	}
 
 	reportID := status.Identifier
 	deadline := time.Now().Add(60 * time.Second)
@@ -315,6 +318,9 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 		if err != nil {
 			return nil, fmt.Errorf("check report status: %w", friendlyAPIError(err))
 		}
+		if status == nil {
+			return nil, errors.New("check report status: empty response from Crowdin")
+		}
 		if status.Status == "failed" {
 			return nil, errors.New("Crowdin report generation failed")
 		}
@@ -326,6 +332,9 @@ func FetchTopMembers(ctx context.Context, token, projectID string, unit ReportUn
 	link, _, err := client.Reports.Download(ctx, id, reportID)
 	if err != nil {
 		return nil, fmt.Errorf("get report download link: %w", friendlyAPIError(err))
+	}
+	if link == nil {
+		return nil, errors.New("get report download link: empty response from Crowdin")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link.URL, nil)

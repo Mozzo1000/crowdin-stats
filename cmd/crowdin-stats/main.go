@@ -32,6 +32,7 @@ func main() {
 
 	noCache := flag.Bool("no-cache", false, "disable the 12h embed cache — every embed request does a live Crowdin fetch (for testing)")
 	noRateLimit := flag.Bool("no-ratelimit", false, "disable rate limiting on /setup and /setup/projects (for local testing)")
+	insecureHTTP := flag.Bool("insecure-http", false, "build embed/setup URLs with http:// instead of https:// (for local testing without a TLS-terminating proxy in front)")
 	flag.Parse()
 
 	masterKey, err := loadMasterKey()
@@ -45,7 +46,11 @@ func main() {
 		slog.Error("startup failed", "error", "HOST environment variable must be set to the public hostname this instance is served from")
 		os.Exit(1)
 	}
-	baseURL := "https://" + host
+	scheme := "https://"
+	if *insecureHTTP {
+		scheme = "http://"
+	}
+	baseURL := scheme + host
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
@@ -68,6 +73,9 @@ func main() {
 	}
 	if s.noRateLimit {
 		slog.Warn("rate limiting disabled on /setup and /setup/projects (-no-ratelimit)")
+	}
+	if *insecureHTTP {
+		slog.Warn("building embed/setup URLs with http:// instead of https:// (-insecure-http)")
 	}
 
 	mux := http.NewServeMux()

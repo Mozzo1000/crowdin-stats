@@ -30,12 +30,19 @@ npx tailwindcss -i input.css -o static/app.css --minify
 export MASTER_KEY=$(openssl rand -base64 32)
 export DB_PATH=./data/db.sqlite
 export HOST=localhost:8080
-go run ./cmd/crowdin-stats
+go run ./cmd/crowdin-stats -insecure-http
 
 # add -no-cache to bypass the 12h embed cache entirely — every embed
 # request does a live Crowdin fetch, useful while testing
-go run ./cmd/crowdin-stats -no-cache
+go run ./cmd/crowdin-stats -insecure-http -no-cache
 ```
+
+`-insecure-http` builds embed/setup URLs with `http://` instead of `https://`,
+since running the binary directly (without Caddy terminating TLS in front of
+it, as in production) means there's nothing listening on HTTPS locally.
+Without it, the browser can't load the `https://` embed URLs the app hands
+back and requests to them fail. Omit the flag if you're running behind Caddy
+locally too (e.g. via `docker compose`).
 
 ## Deployment
 

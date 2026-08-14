@@ -530,8 +530,8 @@
         var text = urlEl ? urlEl.textContent : '';
         navigator.clipboard.writeText(text);
         var original = copyBtn.textContent;
-        copyBtn.textContent = mode === 'demo' ? 'Copied — swap in your ID' : 'Copied!';
-        setTimeout(function () { copyBtn.textContent = original; }, mode === 'demo' ? 2500 : 1500);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.textContent = original; }, 1500);
       });
     }
 

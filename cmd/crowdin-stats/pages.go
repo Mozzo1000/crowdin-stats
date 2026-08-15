@@ -20,7 +20,7 @@ type pageData struct {
 	Description    string
 	Path           string // used to build the absolute og:url
 	ShowGetStarted bool
-	LivePreview    bool // true renders the embed-builder's <img> preview (setup), false its inline SVG preview (index)
+	LivePreview    bool // true shows the embed-builder's snippet-format controls (setup); both its <img> and inline SVG preview elements always render — JS picks between them per embed type
 }
 
 // CanonicalURL and OGImageURL are computed (rather than built in the

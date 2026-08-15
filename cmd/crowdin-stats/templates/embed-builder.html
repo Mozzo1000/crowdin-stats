@@ -159,9 +159,7 @@
 
     <div class="mb-4 overflow-x-auto">
       <img data-builder-preview-img class="max-w-full" alt="{{if .LivePreview}}Live image preview with your chosen settings{{else}}Preview of your chosen settings{{end}}" />
-      {{if not .LivePreview}}
-        <div data-builder-preview aria-hidden="true" inert></div>
-      {{end}}
+      <div data-builder-preview aria-hidden="true" inert></div>
     </div>
 
     {{if .LivePreview}}

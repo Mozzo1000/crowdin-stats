@@ -43,7 +43,7 @@ go test ./...
 go run ./cmd/crowdin-stats gendemo
 
 # rebuild compiled CSS after changing input.css or static/*.html
-npx tailwindcss -i input.css -o static/app.css --minify
+npx @tailwindcss/cli -i input.css -o static/app.css --minify
 ```
 
 ## Running locally

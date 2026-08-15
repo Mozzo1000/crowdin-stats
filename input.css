@@ -1,6 +1,30 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@source "./cmd/crowdin-stats/templates/*.html";
+@source "./static/*.js";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Semantic tokens backed by CSS variables (see :root below) so a
+     single `.dark` class on <html> re-themes every component — no
+     dark: variant needed on individual elements. */
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+
+  --font-sans: "Inter", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
 
 @layer base {
   @font-face {

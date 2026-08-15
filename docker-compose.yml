@@ -14,6 +14,8 @@ services:
 
   caddy:
     image: caddy:2
+    environment:
+      - HOST=${HOST}
     ports:
       - "443:443"
       - "80:80"

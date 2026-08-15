@@ -10,6 +10,7 @@ on:
       - "**.md"
       - "LICENSE"
       - ".gitignore"
+      - ".github/**"
 
 jobs:
   build-and-push:

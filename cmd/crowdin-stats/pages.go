@@ -36,7 +36,7 @@ type page struct {
 var pages = map[string]page{
 	"index": {
 		data: pageData{
-			Title:          "crowdin-stats — live translation images for your README",
+			Title:          "Crowdin Stats — live translation images for your README",
 			Description:    "Generate live, embeddable SVG images showing Crowdin translation progress and top contributors, without exposing your Crowdin token.",
 			Path:           "/",
 			ShowGetStarted: true,
@@ -44,7 +44,7 @@ var pages = map[string]page{
 	},
 	"setup": {
 		data: pageData{
-			Title:          "Generate your images — crowdin-stats",
+			Title:          "Generate your images — Crowdin Stats",
 			Description:    "Connect a Crowdin project and get back embed URLs for a translation progress table and contributor grid. Takes under a minute, no account required.",
 			Path:           "/setup",
 			ShowGetStarted: false,
@@ -53,7 +53,7 @@ var pages = map[string]page{
 	},
 	"privacy": {
 		data: pageData{
-			Title:          "Privacy Policy — crowdin-stats",
+			Title:          "Privacy Policy — Crowdin Stats",
 			Description:    "What crowdin-stats stores when you register a project, and how your Crowdin token is encrypted.",
 			Path:           "/privacy",
 			ShowGetStarted: true,
@@ -61,7 +61,7 @@ var pages = map[string]page{
 	},
 	"terms": {
 		data: pageData{
-			Title:          "Terms of Service — crowdin-stats",
+			Title:          "Terms of Service — Crowdin Stats",
 			Description:    "Terms governing use of crowdin-stats' free, self-hosted translation-image embeds.",
 			Path:           "/terms",
 			ShowGetStarted: true,
@@ -69,7 +69,7 @@ var pages = map[string]page{
 	},
 	"revoke": {
 		data: pageData{
-			Title:          "Revoke access — crowdin-stats",
+			Title:          "Revoke access — Crowdin Stats",
 			Description:    "Revoke a crowdin-stats embed and remove its stored project data.",
 			Path:           "/revoke",
 			ShowGetStarted: false,

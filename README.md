@@ -86,9 +86,9 @@ extra to configure for certificates.
    server you want to deploy to:
 
    ```bash
-   curl -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/docker-compose.yml \
-        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/Caddyfile \
-        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/.env.example
+   curl -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/main/docker-compose.yml \
+        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/main/Caddyfile \
+        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/main/.env.example
    ```
 2. Point a DNS record at that server for the domain you'll use.
 3. Copy `.env.example` to `.env` and fill in `MASTER_KEY` (a random secret

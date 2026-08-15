@@ -3,9 +3,13 @@ name: Publish Docker image
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "v*"
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
 
 jobs:
   build-and-push:

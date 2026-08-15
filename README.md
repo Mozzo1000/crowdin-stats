@@ -78,7 +78,7 @@ locally too (e.g. via `docker compose`).
 
 The easiest way to run your own instance is with Docker Compose. The app
 image is published on Docker Hub as
-[`mozzo1000/crowdin-stats`](https://hub.docker.com/r/mozzo1000/crowdin-stats),
+[`mozzo/crowdin-stats`](https://hub.docker.com/r/mozzo/crowdin-stats),
 and the included `Caddyfile` handles HTTPS automatically, so there's nothing
 extra to configure for certificates.
 
@@ -106,7 +106,7 @@ The `app` service in `docker-compose.yml` looks like this:
 ```yaml
 services:
   app:
-    image: mozzo1000/crowdin-stats:latest
+    image: mozzo/crowdin-stats:latest
     environment:
       - MASTER_KEY=${MASTER_KEY}
       - DB_PATH=/data/db.sqlite

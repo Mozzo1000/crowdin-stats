@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: mozzo1000/crowdin-stats:latest
     environment:
       - MASTER_KEY=${MASTER_KEY}
       - DB_PATH=/data/db.sqlite

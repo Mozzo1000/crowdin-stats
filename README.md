@@ -66,15 +66,58 @@ Without it, the browser can't load the `https://` embed URLs the app hands
 back and requests to them fail. Omit the flag if you're running behind Caddy
 locally too (e.g. via `docker compose`).
 
+## Environment variables
+
+| Variable     | Required | Default              | Description                                                                                   |
+| ------------ | -------- | --------------------- | ----------------------------------------------------------------------------------------------- |
+| `MASTER_KEY` | Yes      | —                      | Secret key used to encrypt stored Crowdin project tokens. Generate one with `openssl rand -base64 32` and never commit it. |
+| `HOST`       | Yes      | —                      | The public hostname this instance is served from (e.g. `crowdin-stats.example.com`), used to build embed/setup URLs. |
+| `DB_PATH`    | No       | `./data/db.sqlite`     | Path to the SQLite database file.                                                              |
+
 ## Deployment
 
-See `docker-compose.yml`, `Dockerfile`, and `Caddyfile`. Copy `.env.example`
-to `.env`, fill in `MASTER_KEY` and `HOST`, then `docker compose up -d --build`.
+The easiest way to run your own instance is with Docker Compose. The app
+image is published on Docker Hub as
+[`mozzo1000/crowdin-stats`](https://hub.docker.com/r/mozzo1000/crowdin-stats),
+and the included `Caddyfile` handles HTTPS automatically, so there's nothing
+extra to configure for certificates.
 
-The app container runs as a non-root user (uid/gid `10001`) with all Linux
-capabilities dropped, so the bind-mounted `./data` directory must be writable
-by that uid — run `mkdir -p data && sudo chown 10001:10001 data` before the
-first `docker compose up`.
+1. Download `docker-compose.yml`, `Caddyfile`, and `.env.example` onto the
+   server you want to deploy to:
+
+   ```bash
+   curl -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/docker-compose.yml \
+        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/Caddyfile \
+        -O https://raw.githubusercontent.com/Mozzo1000/crowdin-stats/master/.env.example
+   ```
+2. Point a DNS record at that server for the domain you'll use.
+3. Copy `.env.example` to `.env` and fill in `MASTER_KEY` (a random secret
+   used to encrypt stored Crowdin tokens — generate one with
+   `openssl rand -base64 32`) and `HOST` (the domain from step 2).
+4. Create the data folder and make it writable by the app's user:
+   `mkdir -p data && sudo chown 10001:10001 data`.
+5. Start it up: `docker compose up -d`.
+
+That's it — Caddy will fetch a TLS certificate for your domain and the app
+will be reachable at `https://<your HOST>`.
+
+The `app` service in `docker-compose.yml` looks like this:
+
+```yaml
+services:
+  app:
+    image: mozzo1000/crowdin-stats:latest
+    environment:
+      - MASTER_KEY=${MASTER_KEY}
+      - DB_PATH=/data/db.sqlite
+      - HOST=${HOST}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+```
+
+To update to a newer release later, run `docker compose pull && docker
+compose up -d`.
 
 ## License
 

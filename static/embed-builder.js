@@ -226,7 +226,7 @@
   }
 
   // --- contributors.svg, ported from renderContributorsSVG in render.go ---
-  var GRID = { avatarSize: 48, avatarGap: 6, paddingX: 10, paddingY: 10, cols: 8 };
+  var GRID = { avatarSize: 64, avatarGap: 6, paddingX: 10, paddingY: 10, cols: 8 };
 
   function renderContributorsSVG(contributors, limit, colors) {
     var sorted = contributors.slice().sort(function (a, b) {

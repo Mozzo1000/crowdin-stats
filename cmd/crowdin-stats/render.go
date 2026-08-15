@@ -292,7 +292,7 @@ func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 }
 
 const (
-	avatarSize   = 48
+	avatarSize   = 64
 	avatarGap    = 6
 	gridPaddingX = 10
 	gridPaddingY = 10

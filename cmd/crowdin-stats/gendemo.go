@@ -56,8 +56,8 @@ func generateDemoSVGs() {
 		{Username: "yui", FullName: "Yui Tanaka", Amount: 810, AvatarURL: "https://i.pravatar.cc/150?img=43"},
 		{Username: "ines", FullName: "Ines Costa", Amount: 700},
 	}, 10)
-	contributors := renderContributorsSVG(demoContributors, 10, defaultEmbedColors)
-	contributorsDark := renderContributorsSVG(demoContributors, 10, darkEmbedColors)
+	contributors := renderContributorsSVG(demoContributors, 10, defaultAvatarSize, defaultEmbedColors)
+	contributorsDark := renderContributorsSVG(demoContributors, 10, defaultAvatarSize, darkEmbedColors)
 
 	files := map[string]string{
 		"static/demo-table.svg":               table,

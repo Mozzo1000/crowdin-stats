@@ -124,6 +124,50 @@ func TestHandleContributorsEmbedClampsLimit(t *testing.T) {
 	}
 }
 
+func TestHandleContributorsEmbedClampsAvatarSize(t *testing.T) {
+	db := newTestDB(t)
+	s := &server{db: db}
+
+	if err := insertProject(db, "pid-contrib-avatarsize", "12345", []byte("ct"), []byte("n"), time.Now().Unix(), "hash-contrib-avatarsize"); err != nil {
+		t.Fatalf("insertProject: %v", err)
+	}
+
+	contributors := []Contributor{{Username: "amara", FullName: "Amara Okafor", Amount: 100, AvatarURL: "https://example.com/a.png"}}
+	b, err := json.Marshal(contributors)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	setCache(db, "contrib-data:pid-contrib-avatarsize:unit=words:hideOwner=false:avatars=30", string(b), cacheTTL)
+
+	cases := []struct {
+		name string
+		url  string
+		want int
+	}{
+		{"above the max is clamped down", "/embed/pid-contrib-avatarsize/contributors.svg?avatarSize=9999", maxAvatarSize},
+		{"below the min is clamped up", "/embed/pid-contrib-avatarsize/contributors.svg?avatarSize=1", minAvatarSize},
+		{"zero falls back to the default", "/embed/pid-contrib-avatarsize/contributors.svg?avatarSize=0", defaultAvatarSize},
+		{"unset falls back to the default", "/embed/pid-contrib-avatarsize/contributors.svg", defaultAvatarSize},
+		{"within range is passed through unchanged", "/embed/pid-contrib-avatarsize/contributors.svg?avatarSize=40", 40},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, tc.url, nil)
+			r.SetPathValue("publicID", "pid-contrib-avatarsize")
+			w := httptest.NewRecorder()
+			s.handleContributorsEmbed(w, r)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+			}
+			want := fmt.Sprintf(`width="%d" height="%d"`, tc.want, tc.want)
+			if !strings.Contains(w.Body.String(), want) {
+				t.Fatalf("expected avatar image %s in output, got: %s", want, w.Body.String())
+			}
+		})
+	}
+}
+
 // An unrecognized `unit` must fall back to words rather than bubbling up as
 // an error — verified end-to-end by seeding the dataset cache only under
 // the words-tier key and confirming the handler still serves it (a miss

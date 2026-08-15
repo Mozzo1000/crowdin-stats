@@ -292,16 +292,35 @@ func renderTableSVG(languages []LanguageProgress, colors embedColors) string {
 }
 
 const (
-	avatarSize   = 64
-	avatarGap    = 6
-	gridPaddingX = 10
-	gridPaddingY = 10
-	gridCols     = 8
+	defaultAvatarSize = 64
+	minAvatarSize     = 24
+	maxAvatarSize     = 128
+	avatarGap         = 6
+	gridPaddingX      = 10
+	gridPaddingY      = 10
+	gridCols          = 8
 )
+
+// clampAvatarSize sanitizes the avatarSize query param — anything out of
+// range is clamped rather than rejected, mirroring how limit/minPercent are
+// handled elsewhere, and 0 (unset) falls back to defaultAvatarSize.
+func clampAvatarSize(size int) int {
+	if size <= 0 {
+		return defaultAvatarSize
+	}
+	if size < minAvatarSize {
+		return minAvatarSize
+	}
+	if size > maxAvatarSize {
+		return maxAvatarSize
+	}
+	return size
+}
 
 // renderContributorsSVG renders a contrib.rocks-style grid of circular
 // avatars, ordered by contribution volume and truncated to limit.
-func renderContributorsSVG(contributors []Contributor, limit int, colors embedColors) string {
+func renderContributorsSVG(contributors []Contributor, limit int, avatarSize int, colors embedColors) string {
+	avatarSize = clampAvatarSize(avatarSize)
 	sorted := make([]Contributor, len(contributors))
 	copy(sorted, contributors)
 	sort.Slice(sorted, func(i, j int) bool {

@@ -67,7 +67,7 @@ func TestRenderContributorsSVG(t *testing.T) {
 	svg := renderContributorsSVG([]Contributor{
 		{Username: "alice", Amount: 100},
 		{Username: "bob", Amount: 50},
-	}, 30, defaultEmbedColors)
+	}, 30, defaultAvatarSize, defaultEmbedColors)
 	if !strings.HasPrefix(svg, "<svg") {
 		t.Fatalf("expected svg output, got: %s", svg)
 	}
@@ -89,7 +89,7 @@ func TestRenderContributorsSVG(t *testing.T) {
 func TestRenderContributorsSVGEscapesFullName(t *testing.T) {
 	svg := renderContributorsSVG([]Contributor{
 		{Username: "alice", FullName: `<script>alert(1)</script>`, Amount: 100},
-	}, 30, defaultEmbedColors)
+	}, 30, defaultAvatarSize, defaultEmbedColors)
 	if strings.Contains(svg, "<script>") {
 		t.Fatalf("expected full name to be escaped, got raw <script> in: %s", svg)
 	}
@@ -104,7 +104,7 @@ func TestRenderContributorsSVGEscapesFullName(t *testing.T) {
 func TestRenderContributorsSVGEscapesAvatarURL(t *testing.T) {
 	svg := renderContributorsSVG([]Contributor{
 		{Username: "alice", Amount: 100, AvatarURL: `https://example.com/a.png" onload="alert(1)`},
-	}, 30, defaultEmbedColors)
+	}, 30, defaultAvatarSize, defaultEmbedColors)
 	if strings.Contains(svg, `.png" onload="alert(1)`) {
 		t.Fatalf("expected avatar URL to be escaped, got raw attribute breakout in: %s", svg)
 	}
@@ -115,7 +115,7 @@ func TestRenderContributorsSVGRespectsLimit(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		contributors = append(contributors, Contributor{Username: string(rune('a' + i)), Amount: int64(10 - i)})
 	}
-	svg := renderContributorsSVG(contributors, 3, defaultEmbedColors)
+	svg := renderContributorsSVG(contributors, 3, defaultAvatarSize, defaultEmbedColors)
 	count := strings.Count(svg, "<clipPath")
 	if count != 3 {
 		t.Fatalf("expected 3 avatars, got %d: %s", count, svg)
@@ -123,7 +123,7 @@ func TestRenderContributorsSVGRespectsLimit(t *testing.T) {
 }
 
 func TestRenderContributorsSVGEmpty(t *testing.T) {
-	svg := renderContributorsSVG(nil, 30, defaultEmbedColors)
+	svg := renderContributorsSVG(nil, 30, defaultAvatarSize, defaultEmbedColors)
 	if !strings.Contains(svg, "no contributors yet") {
 		t.Fatalf("expected empty state message, got: %s", svg)
 	}
@@ -348,8 +348,8 @@ func TestSVGRenderersHaveAccessibleName(t *testing.T) {
 	svgs := map[string]string{
 		"table":                renderTableSVG(langs, defaultEmbedColors),
 		"table empty":          renderTableSVG(nil, defaultEmbedColors),
-		"contributors":         renderContributorsSVG(contributors, 30, defaultEmbedColors),
-		"contributors empty":   renderContributorsSVG(nil, 30, defaultEmbedColors),
+		"contributors":         renderContributorsSVG(contributors, 30, defaultAvatarSize, defaultEmbedColors),
+		"contributors empty":   renderContributorsSVG(nil, 30, defaultAvatarSize, defaultEmbedColors),
 		"overall card":         renderOverallCardSVG(langs, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors),
 		"overall card empty":   renderOverallCardSVG(nil, OverallUnitWords, MetricBoth, ProgressTranslation, defaultEmbedColors),
 		"overall circle":       renderOverallCircleSVG(langs, OverallUnitWords, ProgressTranslation, defaultEmbedColors),
@@ -441,7 +441,7 @@ func TestRenderTableSVGTransparentBg(t *testing.T) {
 	}
 
 	contributors := []Contributor{{Username: "alice", Amount: 100}}
-	if svg := renderContributorsSVG(contributors, 30, colors); !strings.Contains(svg, "<svg") {
+	if svg := renderContributorsSVG(contributors, 30, defaultAvatarSize, colors); !strings.Contains(svg, "<svg") {
 		t.Fatalf("expected renderContributorsSVG with transparent bg not to panic, got: %s", svg)
 	}
 }

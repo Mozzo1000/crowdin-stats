@@ -226,9 +226,20 @@
   }
 
   // --- contributors.svg, ported from renderContributorsSVG in render.go ---
-  var GRID = { avatarSize: 64, avatarGap: 6, paddingX: 10, paddingY: 10, cols: 8 };
+  var GRID = { avatarGap: 6, paddingX: 10, paddingY: 10, cols: 8 };
+  var DEFAULT_AVATAR_SIZE = 64;
+  var MIN_AVATAR_SIZE = 24;
+  var MAX_AVATAR_SIZE = 128;
 
-  function renderContributorsSVG(contributors, limit, colors) {
+  // Mirrors render.go's clampAvatarSize — 0/unset falls back to the
+  // default, everything else is clamped into range rather than rejected.
+  function clampAvatarSize(size) {
+    if (!size || size <= 0) return DEFAULT_AVATAR_SIZE;
+    return Math.max(MIN_AVATAR_SIZE, Math.min(MAX_AVATAR_SIZE, size));
+  }
+
+  function renderContributorsSVG(contributors, limit, avatarSize, colors) {
+    avatarSize = clampAvatarSize(avatarSize);
     var sorted = contributors.slice().sort(function (a, b) {
       if (a.amount !== b.amount) return b.amount - a.amount;
       return a.username < b.username ? -1 : a.username > b.username ? 1 : 0;
@@ -241,7 +252,7 @@
 
     var cols = Math.min(GRID.cols, sorted.length);
     var rows = Math.ceil(sorted.length / GRID.cols);
-    var cell = GRID.avatarSize + GRID.avatarGap;
+    var cell = avatarSize + GRID.avatarGap;
     var width = GRID.paddingX * 2 + cell * cols - GRID.avatarGap;
     var height = GRID.paddingY * 2 + cell * rows - GRID.avatarGap;
 
@@ -253,26 +264,26 @@
     sorted.forEach(function (c, i) {
       var col = i % GRID.cols;
       var row = Math.floor(i / GRID.cols);
-      var cx = GRID.paddingX + col * cell + GRID.avatarSize / 2;
-      var cy = GRID.paddingY + row * cell + GRID.avatarSize / 2;
+      var cx = GRID.paddingX + col * cell + avatarSize / 2;
+      var cy = GRID.paddingY + row * cell + avatarSize / 2;
       var clipID = 'clip' + i;
       var title = c.fullName || c.username;
 
-      out += '<clipPath id="' + clipID + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '"/></clipPath>';
+      out += '<clipPath id="' + clipID + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + (avatarSize / 2) + '"/></clipPath>';
       out += '<a href="https://crowdin.com/profile/' + esc(c.username) + '" target="_blank">';
       out += '<title>' + esc(title) + '</title>';
       if (c.avatar) {
         out += '<image href="' + esc(c.avatar) + '" x="' + (GRID.paddingX + col * cell) + '" y="' + (GRID.paddingY + row * cell) +
-          '" width="' + GRID.avatarSize + '" height="' + GRID.avatarSize + '" clip-path="url(#' + clipID + ')" preserveAspectRatio="xMidYMid slice"/>';
+          '" width="' + avatarSize + '" height="' + avatarSize + '" clip-path="url(#' + clipID + ')" preserveAspectRatio="xMidYMid slice"/>';
       } else {
-        out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="' + fallbackFill + '"/>';
+        out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (avatarSize / 2) + '" fill="' + fallbackFill + '"/>';
         // Array.from splits on code points (surrogate pairs kept together),
         // matching render.go's []rune(title)[0] — plain charAt(0) would cut
         // a multi-byte/astral first character in half. See issue #52.
         var initial = title ? Array.from(title)[0].toUpperCase() : '?';
         out += '<text x="' + cx + '" y="' + cy + '" fill="' + colors.text + '" font-size="16" text-anchor="middle" dominant-baseline="central">' + esc(initial) + '</text>';
       }
-      out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (GRID.avatarSize / 2) + '" fill="none" stroke="' + colors.border + '" stroke-width="1"/>';
+      out += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (avatarSize / 2) + '" fill="none" stroke="' + colors.border + '" stroke-width="1"/>';
       out += '</a>';
     });
 
@@ -388,6 +399,7 @@
       if (state.limit !== 30) params.set('limit', state.limit);
       if (state.unit !== 'words') params.set('unit', state.unit);
       if (state.hideOwner) params.set('hideOwner', 'true');
+      if (state.avatarSize !== DEFAULT_AVATAR_SIZE) params.set('avatarSize', state.avatarSize);
     }
     if (type === 'overall') {
       if (state.overallUnit !== 'words') params.set('unit', state.overallUnit);
@@ -460,6 +472,7 @@
       limit: 30,
       unit: 'words',
       hideOwner: false,
+      avatarSize: DEFAULT_AVATAR_SIZE,
       tableProgress: 'translation',
       tableLimit: 0,
       tableMinPercent: 0,
@@ -486,6 +499,8 @@
     var tableControls = root.querySelector('[data-builder-table-controls]');
     var limitInput = root.querySelector('[data-builder-limit]');
     var limitValue = root.querySelector('[data-builder-limit-value]');
+    var avatarSizeInput = root.querySelector('[data-builder-avatarsize]');
+    var avatarSizeValue = root.querySelector('[data-builder-avatarsize-value]');
     var unitSelect = root.querySelector('[data-builder-unit]');
     var hideOwnerInput = root.querySelector('[data-builder-hideowner]');
     var tableProgressSelect = root.querySelector('[data-builder-table-progress]');
@@ -677,7 +692,7 @@
             ? renderOverallCircleSVG(languages, state.overallUnit, state.overallProgress, state.colors)
             : renderOverallCardSVG(languages, state.overallUnit, state.overallMetric, state.overallProgress, state.colors);
         } else {
-          svg = renderContributorsSVG(contributors, state.limit, state.colors);
+          svg = renderContributorsSVG(contributors, state.limit, state.avatarSize, state.colors);
         }
         if (state.type === 'contributors') {
           // Contributor avatars are referenced by external <image href> —
@@ -718,6 +733,13 @@
       limitInput.addEventListener('input', function () {
         state.limit = parseInt(limitInput.value, 10) || 30;
         if (limitValue) limitValue.textContent = state.limit;
+        render();
+      });
+    }
+    if (avatarSizeInput) {
+      avatarSizeInput.addEventListener('input', function () {
+        state.avatarSize = clampAvatarSize(parseInt(avatarSizeInput.value, 10));
+        if (avatarSizeValue) avatarSizeValue.textContent = state.avatarSize;
         render();
       });
     }

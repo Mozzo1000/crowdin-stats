@@ -515,12 +515,19 @@ func (s *server) handleContributorsEmbed(w http.ResponseWriter, r *http.Request)
 
 	hideOwner := r.URL.Query().Get("hideOwner") == "true"
 
+	avatarSize := 0
+	if v := r.URL.Query().Get("avatarSize"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			avatarSize = n
+		}
+	}
+
 	contributors, err := s.getContributorData(r.Context(), publicID, p, unit, hideOwner, avatarLimitTier(limit))
 	if err != nil {
 		s.handleEmbedError(w, err, colors)
 		return
 	}
-	writeSVG(w, renderContributorsSVG(contributors, limit, colors))
+	writeSVG(w, renderContributorsSVG(contributors, limit, avatarSize, colors))
 }
 
 func (s *server) handleOverallEmbed(w http.ResponseWriter, r *http.Request) {
